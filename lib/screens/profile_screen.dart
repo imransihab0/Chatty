@@ -1,7 +1,5 @@
-
 import 'dart:developer';
 import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/dialogs.dart';
@@ -36,13 +34,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Scaffold(
         //app bar start here
         appBar: AppBar(
-          title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),),
+          title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Lexend'),),
         ),
         // floating button to logout
         floatingActionButton: Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: FloatingActionButton.extended(
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.white,
             onPressed: () async {
               //for showing progress circle
             Dialogs.showProgressbar(context);
@@ -56,7 +54,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
               });
             });
-          }, icon: const Icon(Icons.logout_outlined), label: const Text('Logout'),),
+          }, icon: const Icon(Icons.logout_outlined), label: const Text('Logout',style: TextStyle(
+            color: Colors.black
+          ),),),
         ),
         body: Form(
           key: _formKey,
@@ -163,15 +163,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Dialogs.showSnackbar(context, 'Profile Updated Successfully!');
                           });
                         }
-                      }, icon: const Icon(Icons.edit_note, color: Colors.black,), label: const Text(
+                      }, icon: const Icon(Icons.edit_note, color: Colors.white,), label: const Text(
                           'UPDATE YOUR INFO',
-                        style: TextStyle(color: Colors.black),
+                        style: TextStyle(color: Colors.white),
                       ),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(7)
                           ),
-                          backgroundColor: Colors.yellow,
+                          backgroundColor: Colors.black,
                         ),
                       )
                   )

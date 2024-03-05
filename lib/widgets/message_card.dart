@@ -39,8 +39,8 @@ class _MessageCardState extends State<MessageCard> {
             padding: EdgeInsets.symmetric(horizontal: mq.width * 0.04, vertical: mq.width * 0.02),
             margin: EdgeInsets.symmetric(horizontal: mq.height * .01),
             decoration: BoxDecoration(
-              color: Colors.yellow.shade100,
-              border: Border.all(color: Colors.yellow),
+              color: Color(0xffdedede),
+              border: Border.all(color: Color(0xff6e6d6d)),
               borderRadius: const BorderRadius.only(
                 topRight: Radius.circular(15),
                 topLeft: Radius.circular(15),
@@ -73,8 +73,8 @@ class _MessageCardState extends State<MessageCard> {
           child: Text(MyDateUtil.getFormattedTime(context: context, time: widget.message.sent), style: const TextStyle(
             fontSize: 13, color: Colors.black54,
           ),),
-        )
-
+        ),
+SizedBox(height: mq.height * .04,),
       ],
     );
   }
@@ -93,7 +93,7 @@ class _MessageCardState extends State<MessageCard> {
             SizedBox(width: mq.width * .04),
             // double tick icon
             if(widget.message.read.isNotEmpty)
-            const Icon(Icons.done_all_outlined, color: Colors.yellow, size: 20,),
+            const Icon(Icons.done_all_outlined, color: Colors.black, size: 20,),
             // space box
             const SizedBox(width: 2),
             // read time
@@ -101,6 +101,7 @@ class _MessageCardState extends State<MessageCard> {
               fontSize: 13, color: Colors.black54,
             ),),
           ],
+
         ),
         Flexible(
           child: Container(

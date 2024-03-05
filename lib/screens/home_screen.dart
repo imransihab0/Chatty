@@ -67,7 +67,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   },
                 )
-                : const Text('Chatty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),),
+                : const Text('Chatty', style: TextStyle(fontWeight: FontWeight.normal,
+                fontSize: 20,
+                fontFamily: 'Lexend',
+            ),),
             actions: [
               // search user button
               IconButton(onPressed: (){
@@ -84,10 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
           // floating button to add new user
           floatingActionButton: Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: FloatingActionButton(onPressed: () async {
-              await APIs.auth.signOut();
-              await GoogleSignIn().signOut();
-            }, child: const Icon(Icons.add_comment_sharp)),
+            child: FloatingActionButton(onPressed: () {},
+                backgroundColor: Color(0xffdedede),
+                  child: const Icon(Icons.add_comment_sharp)),
           ),
           body: StreamBuilder(
             stream: APIs.getAllUsers(),
