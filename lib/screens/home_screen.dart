@@ -329,68 +329,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         return 0;
                       });
 
-                      return Column(
-                        children: [
-                          // Quick Search Trigger Pill when not searching
-                          if (!_isSearching) ...[
-                        GestureDetector(
-                          onTap: _startSearch,
-                          child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 11),
-                            decoration: BoxDecoration(
-                              color: context.surfaceMutedColor,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: context.borderColor),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.search_rounded,
-                                    color: context.textMutedColor, size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Search chats, friends, or email...',
-                                    style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 13,
-                                      color: context.textMutedColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Horizontal Active Now Live Avatars Strip
-                        _activeNowTray(_list),
-                      ],
-
-                      // Filter Chips Bar (All vs Online)
-                      _filterChipsBar(
-                        _isSearching ? localFiltered.length : totalCount,
-                        _isSearching
-                            ? localFiltered.where((u) => u.isOnline).length
-                            : onlineCount,
-                      ),
-
-                      // Global search progress indicator
-                      if (_isLoadingGlobal)
-                        const LinearProgressIndicator(
-                          minHeight: 2,
-                          backgroundColor: Colors.transparent,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                        ),
-
-                      // Main List Content
-                      Expanded(
-                        child: _buildResultsList(localFiltered),
-                      ),
-                    ],
-                  );
+                      return _buildScrollableContent(
+                        localFiltered: localFiltered,
+                        totalCount: totalCount,
+                        onlineCount: onlineCount,
+                      );
                 },
               );
               }
@@ -843,184 +786,119 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // Results List View with section support
-  Widget _buildResultsList(List<ChatUser> localFiltered) {
+  // Quick Search Trigger Pill when not searching
+  Widget _searchTriggerPill() {
+    return GestureDetector(
+      onTap: _startSearch,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: context.surfaceMutedColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.borderColor),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.search_rounded,
+                color: context.textMutedColor, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Search chats, friends, or email...',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textMutedColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Main Unified Scrollable Content (Messenger / WhatsApp style)
+  // Search bar, active friends strip, and filter chips scroll naturally with conversations
+  Widget _buildScrollableContent({
+    required List<ChatUser> localFiltered,
+    required int totalCount,
+    required int onlineCount,
+  }) {
     final bool hasLocal = localFiltered.isNotEmpty;
     final bool hasGlobal = _globalSearchResults.isNotEmpty;
 
-    if (!hasLocal && !hasGlobal) {
-      if (_isSearching && _searchQuery.isNotEmpty) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: context.primarySoftColor,
-                    borderRadius: BorderRadius.circular(36),
-                  ),
-                  child: const Icon(
-                    Icons.search_off_rounded,
-                    color: AppTheme.primary,
-                    size: 34,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'No matches found',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimaryColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'We couldn\'t find anyone matching "$_searchQuery". Try checking for typos or searching by full email address.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    color: context.textSecondaryColor,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged('');
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: const BorderSide(color: AppTheme.primary),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.clear_rounded, size: 16),
-                  label: const Text(
-                    'Clear Search',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      if (_selectedFilter == HomeFilter.online) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: context.primarySoftColor,
-                    borderRadius: BorderRadius.circular(36),
-                  ),
-                  child: const Icon(
-                    Icons.person_off_outlined,
-                    color: AppTheme.primary,
-                    size: 34,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'No friends online',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimaryColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'None of your contacts are currently active. Switch to "All" to view all chats.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    color: context.textSecondaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: context.primarySoftColor,
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                child: const Icon(
-                  Icons.forum_outlined,
-                  color: AppTheme.primary,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'No conversations yet',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: context.textPrimaryColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Tap "New Chat" below to start a conversation with a friend!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: context.textSecondaryColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return ListView(
-      padding: const EdgeInsets.only(top: 4, bottom: 80),
-      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(top: 4, bottom: 84),
+      physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics()),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
-        // Local Contacts Section
-        if (hasLocal) ...[
-          if (_isSearching && hasGlobal)
+        // Quick Search Trigger Pill & Active Friends (Scroll with list, hidden during active search)
+        if (!_isSearching) ...[
+          _searchTriggerPill(),
+          _activeNowTray(_list),
+        ],
+
+        // Filter Chips Bar (All vs Online)
+        _filterChipsBar(
+          _isSearching ? localFiltered.length : totalCount,
+          _isSearching
+              ? localFiltered.where((u) => u.isOnline).length
+              : onlineCount,
+        ),
+
+        // Global search progress indicator
+        if (_isLoadingGlobal)
+          const LinearProgressIndicator(
+            minHeight: 2,
+            backgroundColor: Colors.transparent,
+            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+          ),
+
+        // Empty state when no matches/chats exist
+        if (!hasLocal && !hasGlobal)
+          _buildEmptyState()
+        else ...[
+          // Local Contacts Section
+          if (hasLocal) ...[
+            if (_isSearching && hasGlobal)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.people_alt_rounded,
+                        size: 15, color: AppTheme.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'MY CONVERSATIONS (${localFiltered.length})',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: context.textSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ...localFiltered.map((user) => ChatUserCard(user: user)),
+          ],
+
+          // Global Directory Discovery Section
+          if (hasGlobal) ...[
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Row(
                 children: [
-                  const Icon(Icons.people_alt_rounded,
+                  const Icon(Icons.public_rounded,
                       size: 15, color: AppTheme.primary),
                   const SizedBox(width: 6),
                   Text(
-                    'MY CONVERSATIONS (${localFiltered.length})',
+                    'GLOBAL DIRECTORY (${_globalSearchResults.length})',
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
@@ -1032,35 +910,167 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ],
               ),
             ),
-          ...localFiltered.map((user) => ChatUserCard(user: user)),
-        ],
-
-        // Global Directory Discovery Section
-        if (hasGlobal) ...[
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
-              children: [
-                const Icon(Icons.public_rounded,
-                    size: 15, color: AppTheme.primary),
-                const SizedBox(width: 6),
-                Text(
-                  'GLOBAL DIRECTORY (${_globalSearchResults.length})',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: context.textSecondaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ..._globalSearchResults.map((user) => _globalUserCard(user)),
+            ..._globalSearchResults.map((user) => _globalUserCard(user)),
+          ],
         ],
       ],
+    );
+  }
+
+  // Empty State Widget
+  Widget _buildEmptyState() {
+    if (_isSearching && _searchQuery.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.primarySoftColor,
+                  borderRadius: BorderRadius.circular(36),
+                ),
+                child: const Icon(
+                  Icons.search_off_rounded,
+                  color: AppTheme.primary,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'No matches found',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'We couldn\'t find anyone matching "$_searchQuery". Try checking for typos or searching by full email address.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textSecondaryColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  _searchController.clear();
+                  _onSearchChanged('');
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.clear_rounded, size: 16),
+                label: const Text(
+                  'Clear Search',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_selectedFilter == HomeFilter.online) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.primarySoftColor,
+                  borderRadius: BorderRadius.circular(36),
+                ),
+                child: const Icon(
+                  Icons.person_off_outlined,
+                  color: AppTheme.primary,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'No friends online',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'None of your contacts are currently active. Switch to "All" to view all chats.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: context.primarySoftColor,
+                borderRadius: BorderRadius.circular(40),
+              ),
+              child: const Icon(
+                Icons.forum_outlined,
+                color: AppTheme.primary,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'No conversations yet',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap "New Chat" below to start a conversation with a friend!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: context.textSecondaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
