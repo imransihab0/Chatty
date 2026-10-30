@@ -43,6 +43,13 @@ class MyDateUtil{
     return 'Last seen on ${time.day} $month at $formattedTime';
   }
 
+  // Format joined date (e.g., Oct 2024)
+  static String getJoinedDate(String createdAt) {
+    final int millis = int.tryParse(createdAt) ?? 0;
+    if (millis <= 0) return 'Recent';
+    final dt = DateTime.fromMillisecondsSinceEpoch(millis);
+    return '${_getMonth(dt)} ${dt.year}';
+  }
 
   // for showing last chatting month
   static String _getMonth(DateTime date) {
