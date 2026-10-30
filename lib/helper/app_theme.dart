@@ -66,6 +66,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      splashFactory: InkRipple.splashFactory,
       brightness: Brightness.light,
       fontFamily: 'Lexend',
       colorScheme: ColorScheme.fromSeed(
@@ -121,6 +122,7 @@ class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
+      splashFactory: InkRipple.splashFactory,
       brightness: Brightness.dark,
       fontFamily: 'Lexend',
       colorScheme: ColorScheme.fromSeed(

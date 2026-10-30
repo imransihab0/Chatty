@@ -12,8 +12,12 @@ Size mq = Size.zero;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // entering full screen
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Edge-to-edge system UI styling
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+  ));
   await _initializeFirebase();
   await ThemeController.init();
   await ChatSettingsController.init();

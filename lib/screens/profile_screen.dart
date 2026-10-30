@@ -29,7 +29,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _image;
   bool _isUpdating = false;
-  bool _hapticsEnabled = true;
 
   void _handleLogout() async {
     AppHaptics.heavy();
@@ -357,11 +356,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Tactile Haptics',
                       subtitle: 'Subtle clicks on messages & buttons',
                       trailing: Switch.adaptive(
-                        value: _hapticsEnabled,
+                        value: AppHaptics.enabled,
                         activeThumbColor: AppTheme.primary,
                         onChanged: (val) {
+                          setState(() => AppHaptics.enabled = val);
                           AppHaptics.selection();
-                          setState(() => _hapticsEnabled = val);
                         },
                       ),
                     ),

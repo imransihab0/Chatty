@@ -41,8 +41,10 @@ class _MessageCardState extends State<MessageCard> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) {
-        return SafeArea(
-          child: Padding(
+        return Material(
+          color: Colors.transparent,
+          child: SafeArea(
+            child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -161,8 +163,9 @@ class _MessageCardState extends State<MessageCard> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 

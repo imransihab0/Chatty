@@ -31,7 +31,9 @@ class _ChatUserCardState extends State<ChatUserCard> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) {
-        return SafeArea(
+        return Material(
+          color: Colors.transparent,
+          child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             child: Column(
@@ -91,8 +93,9 @@ class _ChatUserCardState extends State<ChatUserCard> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
