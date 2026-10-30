@@ -1,10 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
+import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
+import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/helper/my_date_util.dart';
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
+import 'package:chatty/screens/profile_screen.dart';
+import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:flutter/material.dart';
 
 class ChatUserCard extends StatefulWidget {
@@ -19,26 +23,154 @@ class ChatUserCard extends StatefulWidget {
 class _ChatUserCardState extends State<ChatUserCard> {
   Message? _message;
 
+  void _showChatOptions(bool isPinned, ChatUser currentUser) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: context.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Icon(
+                    isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                    color: AppTheme.primary,
+                  ),
+                  title: Text(
+                    isPinned ? 'Unpin from Top' : 'Pin to Top',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    ChatSettingsController.togglePin(widget.user.id);
+                    Dialogs.showSnackbar(
+                      context,
+                      isPinned ? 'Unpinned conversation' : 'Pinned to top',
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_outline_rounded,
+                      color: AppTheme.primary),
+                  title: Text(
+                    'View Profile',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ProfileScreen(user: currentUser)),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.borderColor, width: 1),
-        boxShadow: context.softShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+    final bool isPinned = ChatSettingsController.isPinned(widget.user.id);
+
+    return Dismissible(
+      key: Key('chat_card_${widget.user.id}'),
+      direction: DismissDirection.startToEnd,
+      confirmDismiss: (direction) async {
+        AppHaptics.medium();
+        ChatSettingsController.togglePin(widget.user.id);
+        Dialogs.showSnackbar(
+          context,
+          isPinned ? 'Unpinned conversation' : 'Pinned to top',
+        );
+        return false;
+      },
+      background: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: AppTheme.primary,
           borderRadius: BorderRadius.circular(18),
-          onTap: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => ChatScreen(user: widget.user)));
-          },
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isPinned ? 'Unpin' : 'Pin to Top',
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        decoration: BoxDecoration(
+          color: isPinned
+              ? (context.isDark
+                  ? AppTheme.primary.withValues(alpha: 0.12)
+                  : AppTheme.primarySoft)
+              : context.surfaceColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isPinned
+                ? AppTheme.primary.withValues(alpha: 0.45)
+                : context.borderColor,
+            width: isPinned ? 1.5 : 1,
+          ),
+          boxShadow: context.softShadow,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onLongPress: () {
+              AppHaptics.medium();
+              _showChatOptions(isPinned, widget.user);
+            },
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ChatScreen(user: widget.user)));
+            },
           child: StreamBuilder(
             stream: APIs.getUserInfo(widget.user),
             builder: (context, userSnapshot) {
@@ -144,36 +276,81 @@ class _ChatUserCardState extends State<ChatUserCard> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                currentUser.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.textPrimaryColor,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      currentUser.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.textPrimaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isPinned) ...[
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.push_pin_rounded,
+                                      size: 14,
+                                      color: AppTheme.primary,
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                _message != null
-                                    ? _message!.type == Type.image
-                                        ? '📷 Photo'
-                                        : _message!.msg
-                                    : currentUser.about,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 13,
-                                  fontWeight: isUnread
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: isUnread
-                                      ? context.textPrimaryColor
-                                      : context.textSecondaryColor,
-                                ),
+                              StreamBuilder(
+                                stream: APIs.getChatMeta(widget.user),
+                                builder: (context, metaSnap) {
+                                  final metaData = metaSnap.data?.data();
+                                  final bool isTyping = metaData?[
+                                          'typing_${widget.user.id}'] ==
+                                      true;
+
+                                  if (isTyping) {
+                                    return const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.edit_note_rounded,
+                                            size: 16,
+                                            color: AppTheme.success),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'typing...',
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppTheme.success,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  return Text(
+                                    _message != null
+                                        ? _message!.type == Type.image
+                                            ? '📷 Photo'
+                                            : _message!.msg
+                                        : currentUser.about,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 13,
+                                      fontWeight: isUnread
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: isUnread
+                                          ? context.textPrimaryColor
+                                          : context.textSecondaryColor,
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -235,6 +412,7 @@ class _ChatUserCardState extends State<ChatUserCard> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

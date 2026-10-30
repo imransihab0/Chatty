@@ -117,6 +117,30 @@ class APIs{
     }
   }
 
+  // update live typing indicator in conversation
+  static Future<void> updateTypingStatus(ChatUser chatUser, bool isTyping) async {
+    if (auth.currentUser == null) return;
+    try {
+      await firestore
+          .collection('chats')
+          .doc(getConversationID(chatUser.id))
+          .set({
+        'typing_${user.uid}': isTyping,
+        'typing_time': DateTime.now().millisecondsSinceEpoch,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      log('Error updateTypingStatus: $e');
+    }
+  }
+
+  // stream conversation metadata (e.g., typing indicator)
+  static Stream<DocumentSnapshot<Map<String, dynamic>>> getChatMeta(ChatUser chatUser) {
+    return firestore
+        .collection('chats')
+        .doc(getConversationID(chatUser.id))
+        .snapshots();
+  }
+
   ///****** Chat Screen Related apis ******
 
   // get conversation id
@@ -135,20 +159,24 @@ class APIs{
   // chats (collection) --> conversation_id (doc) --> messages (collection) --> message (doc)
   // --------------------------------------------------------------------------------------//
   // for sending msg
-  static Future<bool> sendMessage(ChatUser chatUser, String msg, Type type) async {
+  static Future<bool> sendMessage(ChatUser chatUser, String msg, Type type,
+      {String replyMsg = '', String replyUser = ''}) async {
     try {
       if (auth.currentUser == null) return false;
       final time = DateTime.now().millisecondsSinceEpoch.toString();
-      
+
       final Message message = Message(
           toId: chatUser.id,
           msg: msg,
           read: '',
           type: type,
           sent: time,
-          fromId: user.uid);
-      
-      final ref = firestore.collection('chats/${getConversationID(chatUser.id)}/messages/');
+          fromId: user.uid,
+          replyMsg: replyMsg,
+          replyUser: replyUser);
+
+      final ref = firestore
+          .collection('chats/${getConversationID(chatUser.id)}/messages/');
       await ref.doc(time).set(message.toJson());
       return true;
     } catch (e) {
@@ -216,6 +244,22 @@ class APIs{
           .update({'msg': updatedMsg});
     } catch (e) {
       log('Error updateMessage: $e');
+    }
+  }
+
+  // set or toggle emoji reaction on a message
+  static Future<void> setMessageReaction(
+      Message message, String reaction) async {
+    try {
+      final otherId =
+          message.fromId == user.uid ? message.toId : message.fromId;
+      final newReaction = message.reaction == reaction ? '' : reaction;
+      await firestore
+          .collection('chats/${getConversationID(otherId)}/messages/')
+          .doc(message.sent)
+          .update({'reaction': newReaction});
+    } catch (e) {
+      log('Error setMessageReaction: $e');
     }
   }
 

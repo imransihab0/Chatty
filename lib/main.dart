@@ -1,5 +1,6 @@
 import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/screens/splash_screen.dart';
+import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -15,6 +16,7 @@ void main() async {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await _initializeFirebase();
   await ThemeController.init();
+  await ChatSettingsController.init();
   await SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
   runApp(const MyApp());
