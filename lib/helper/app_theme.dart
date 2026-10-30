@@ -25,17 +25,19 @@ class AppTheme {
   static const Color textMuted = Color(0xFF94A3B8); // Slate 400
   static const Color textWhite = Color(0xFFFFFFFF);
 
-  // Dark Mode Colors
-  static const Color darkBackground = Color(0xFF0B0F19); // Deep Midnight
-  static const Color darkSurface = Color(0xFF1E293B); // Slate 800
-  static const Color darkSurfaceMuted = Color(0xFF141E33); // Slate 950
-  static const Color darkBorder = Color(0xFF334155); // Slate 700
-  static const Color darkBorderLight = Color(0xFF1E293B);
+  // Dark Mode Colors (Pure Black & White Monochrome - Zero Blue)
+  static const Color darkBackground = Color(0xFF000000); // Pure OLED Black
+  static const Color darkSurface = Color(0xFF121212); // Pure Neutral Dark Charcoal
+  static const Color darkSurfaceMuted = Color(0xFF1E1E1E); // Pure Neutral Muted Charcoal
+  static const Color darkBorder = Color(0xFF2C2C2C); // Pure Neutral Dark Border
+  static const Color darkBorderLight = Color(0xFF1C1C1C);
 
-  static const Color darkTextPrimary = Color(0xFFF8FAFC); // Slate 50
-  static const Color darkTextSecondary = Color(0xFF94A3B8); // Slate 400
-  static const Color darkTextMuted = Color(0xFF64748B); // Slate 500
-  static const Color darkPrimarySoft = Color(0xFF312E81); // Indigo 900
+  static const Color darkTextPrimary = Color(0xFFFFFFFF); // Crisp Pure White
+  static const Color darkTextSecondary = Color(0xFFA3A3A3); // Crisp Neutral Grey
+  static const Color darkTextMuted = Color(0xFF737373); // Muted Neutral Grey
+  static const Color darkPrimarySoft = Color(0xFF262626); // Neutral Charcoal Accent
+  static const Color darkPrimary = Color(0xFFFFFFFF); // Crisp Pure White Accent
+  static const Color darkOnPrimary = Color(0xFF000000); // Pure Black on White
 
   // Shadows
   static List<BoxShadow> get softShadow => [
@@ -118,26 +120,30 @@ class AppTheme {
     );
   }
 
-  // Dark Theme
+  // Dark Theme (Pure Black & White Monochrome - Zero Blue)
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       splashFactory: InkRipple.splashFactory,
       brightness: Brightness.dark,
       fontFamily: 'Lexend',
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryLight,
+      colorScheme: const ColorScheme(
         brightness: Brightness.dark,
-        primary: primaryLight,
-        secondary: secondary,
+        primary: darkPrimary,
+        onPrimary: darkOnPrimary,
+        secondary: Color(0xFFE5E5E5),
+        onSecondary: Color(0xFF000000),
+        error: danger,
+        onError: Colors.white,
         surface: darkSurface,
+        onSurface: darkTextPrimary,
       ),
       scaffoldBackgroundColor: darkBackground,
       appBarTheme: const AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        backgroundColor: darkSurface,
+        backgroundColor: darkBackground,
         foregroundColor: darkTextPrimary,
         titleTextStyle: TextStyle(
           fontFamily: 'Lexend',
@@ -156,8 +162,8 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primaryLight,
-        foregroundColor: textWhite,
+        backgroundColor: darkPrimary,
+        foregroundColor: darkOnPrimary,
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -192,6 +198,10 @@ extension AppThemeContext on BuildContext {
       isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
   Color get primarySoftColor =>
       isDark ? AppTheme.darkPrimarySoft : AppTheme.primarySoft;
+  Color get primaryColor =>
+      isDark ? AppTheme.darkPrimary : AppTheme.primary;
+  Color get onPrimaryColor =>
+      isDark ? AppTheme.darkOnPrimary : Colors.white;
   List<BoxShadow> get softShadow =>
       isDark ? AppTheme.darkSoftShadow : AppTheme.softShadow;
 }

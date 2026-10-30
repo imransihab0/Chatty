@@ -148,13 +148,15 @@ class _ChatUserCardState extends State<ChatUserCard> {
         decoration: BoxDecoration(
           color: isPinned
               ? (context.isDark
-                  ? AppTheme.primary.withValues(alpha: 0.12)
+                  ? const Color(0xFF1E1E1E)
                   : AppTheme.primarySoft)
               : context.surfaceColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isPinned
-                ? AppTheme.primary.withValues(alpha: 0.45)
+                ? (context.isDark
+                    ? const Color(0xFF444444)
+                    : AppTheme.primary.withValues(alpha: 0.45))
                 : context.borderColor,
             width: isPinned ? 1.5 : 1,
           ),
@@ -378,8 +380,10 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                         ? FontWeight.w600
                                         : FontWeight.w400,
                                     color: isUnread
-                                        ? AppTheme.primary
-                                        : AppTheme.textMuted,
+                                        ? (context.isDark
+                                            ? Colors.white
+                                            : AppTheme.primary)
+                                        : context.textMutedColor,
                                   ),
                                 ),
                                 if (isUnread) ...[
@@ -388,14 +392,18 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.primary,
+                                      color: context.isDark
+                                          ? Colors.white
+                                          : AppTheme.primary,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: const Text(
+                                    child: Text(
                                       'NEW',
                                       style: TextStyle(
                                         fontFamily: 'Lexend',
-                                        color: Colors.white,
+                                        color: context.isDark
+                                            ? Colors.black
+                                            : Colors.white,
                                         fontSize: 9,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.5,

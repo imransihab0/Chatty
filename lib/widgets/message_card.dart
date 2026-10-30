@@ -223,7 +223,9 @@ class _MessageCardState extends State<MessageCard> {
         borderRadius: BorderRadius.circular(10),
         border: Border(
           left: BorderSide(
-            color: isMe ? Colors.white : AppTheme.primary,
+            color: isMe
+                ? Colors.white
+                : (context.isDark ? Colors.white : AppTheme.primary),
             width: 3.5,
           ),
         ),
@@ -240,7 +242,9 @@ class _MessageCardState extends State<MessageCard> {
               fontFamily: 'Lexend',
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: isMe ? Colors.white : AppTheme.primary,
+              color: isMe
+                  ? Colors.white
+                  : (context.isDark ? Colors.white : AppTheme.primary),
             ),
           ),
           const SizedBox(height: 2),
@@ -454,24 +458,35 @@ class _MessageCardState extends State<MessageCard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primary, AppTheme.primaryLight],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: context.isDark
+                      ? const LinearGradient(
+                          colors: [Color(0xFF2C2C2C), Color(0xFF222222)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : const LinearGradient(
+                          colors: [AppTheme.primary, AppTheme.primaryLight],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(18),
                     topRight: Radius.circular(18),
                     bottomLeft: Radius.circular(18),
                     bottomRight: Radius.circular(4),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.22),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  border: context.isDark
+                      ? Border.all(color: const Color(0xFF383838), width: 0.8)
+                      : null,
+                  boxShadow: context.isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.22),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                 ),
                 child: Padding(
                   padding:

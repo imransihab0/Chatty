@@ -308,11 +308,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           widget.user.name.isNotEmpty
                                               ? widget.user.name[0].toUpperCase()
                                               : '?',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Lexend',
                                             fontSize: 38,
                                             fontWeight: FontWeight.w700,
-                                            color: AppTheme.primary,
+                                            color: context.isDark
+                                                ? Colors.white
+                                                : AppTheme.primary,
                                           ),
                                         )
                                       : null,
@@ -327,16 +329,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppTheme.primary,
+                                color: context.isDark
+                                    ? Colors.white
+                                    : AppTheme.primary,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: context.surfaceColor,
                                   width: 3,
                                 ),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.camera_alt_rounded,
-                                color: Colors.white,
+                                color: context.isDark
+                                    ? Colors.black
+                                    : Colors.white,
                                 size: 16,
                               ),
                             ),
@@ -575,8 +581,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: ElevatedButton(
                       onPressed: _isUpdating ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor:
+                            context.isDark ? Colors.white : AppTheme.primary,
+                        foregroundColor:
+                            context.isDark ? Colors.black : Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

@@ -260,15 +260,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ? null
               : FloatingActionButton.extended(
                   onPressed: _addChatUserDialog,
-                  backgroundColor: AppTheme.primary,
+                  backgroundColor:
+                      context.isDark ? Colors.white : AppTheme.primary,
                   elevation: 4,
-                  icon: const Icon(Icons.add_comment_rounded,
-                      color: Colors.white, size: 20),
-                  label: const Text(
+                  icon: Icon(Icons.add_comment_rounded,
+                      color: context.isDark ? Colors.black : Colors.white,
+                      size: 20),
+                  label: Text(
                     'New Chat',
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      color: Colors.white,
+                      color: context.isDark ? Colors.black : Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -359,10 +361,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               color: context.primarySoftColor,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Center(
+            child: Center(
               child: Icon(
                 Icons.chat_bubble_rounded,
-                color: AppTheme.primary,
+                color: context.isDark ? Colors.white : AppTheme.primary,
                 size: 20,
               ),
             ),
@@ -420,7 +422,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.primary, width: 1.5),
+                border: Border.all(
+                    color: context.isDark ? const Color(0xFF444444) : AppTheme.primary,
+                    width: 1.5),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
@@ -436,10 +440,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       APIs.me.name.isNotEmpty
                           ? APIs.me.name[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.primary,
+                        color: context.isDark ? Colors.white : AppTheme.primary,
                         fontSize: 14,
                       ),
                     ),
@@ -614,10 +618,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         end: Alignment.bottomRight,
                                       )
                                     : LinearGradient(
-                                        colors: [
-                                          AppTheme.primary.withValues(alpha: 0.45),
-                                          AppTheme.accent.withValues(alpha: 0.3)
-                                        ],
+                                        colors: context.isDark
+                                            ? [
+                                                const Color(0xFF333333),
+                                                const Color(0xFF222222)
+                                              ]
+                                            : [
+                                                AppTheme.primary.withValues(alpha: 0.45),
+                                                AppTheme.accent.withValues(alpha: 0.3)
+                                              ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
@@ -732,16 +741,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : context.surfaceMutedColor,
+          color: isSelected
+              ? (context.isDark ? Colors.white : AppTheme.primary)
+              : context.surfaceMutedColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppTheme.primary : context.borderColor,
+            color: isSelected
+                ? (context.isDark ? Colors.white : AppTheme.primary)
+                : context.borderColor,
             width: 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.25),
+                    color: (context.isDark ? Colors.white : AppTheme.primary)
+                        .withValues(alpha: context.isDark ? 0.15 : 0.25),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   )
@@ -757,7 +771,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 fontFamily: 'Lexend',
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? Colors.white : context.textSecondaryColor,
+                color: isSelected
+                    ? (context.isDark ? Colors.black : Colors.white)
+                    : context.textSecondaryColor,
               ),
             ),
             const SizedBox(width: 6),
@@ -765,7 +781,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withValues(alpha: 0.25)
+                    ? (context.isDark
+                        ? Colors.black.withValues(alpha: 0.15)
+                        : Colors.white.withValues(alpha: 0.25))
                     : context.borderColor,
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -775,8 +793,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   fontFamily: 'Lexend',
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color:
-                      isSelected ? Colors.white : context.textSecondaryColor,
+                  color: isSelected
+                      ? (context.isDark ? Colors.black : Colors.white)
+                      : context.textSecondaryColor,
                 ),
               ),
             ),

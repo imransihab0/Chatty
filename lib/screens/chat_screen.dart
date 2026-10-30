@@ -941,9 +941,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary,
+                    color: context.isDark ? Colors.white : AppTheme.primary,
                     shape: BoxShape.circle,
-                    boxShadow: AppTheme.buttonShadow,
+                    boxShadow: context.isDark ? null : AppTheme.buttonShadow,
                   ),
                   child: Center(
                     child: AnimatedSwitcher(
@@ -953,7 +953,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: Icon(
                         hasText ? Icons.arrow_upward_rounded : Icons.mic_rounded,
                         key: ValueKey(hasText ? 'send' : 'mic'),
-                        color: Colors.white,
+                        color: context.isDark ? Colors.black : Colors.white,
                         size: 24,
                       ),
                     ),
