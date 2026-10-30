@@ -15,12 +15,12 @@ class Message {
   late final Type type;
 
   Message.fromJson(Map<String, dynamic> json){
-    toId = json['toId'].toString();
-    msg = json['msg'].toString();
-    read = json['read'].toString();
-    type = json['type'].toString() == Type.image.name ? Type.image : Type.text;
-    sent = json['sent'].toString();
-    fromId = json['fromId'].toString();
+    toId = json['toId']?.toString() ?? '';
+    msg = json['msg']?.toString() ?? '';
+    read = json['read']?.toString() ?? '';
+    type = json['type']?.toString() == Type.image.name ? Type.image : Type.text;
+    sent = json['sent']?.toString() ?? '';
+    fromId = json['fromId']?.toString() ?? '';
   }
 
   Map<String, dynamic> toJson() {

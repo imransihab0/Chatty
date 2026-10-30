@@ -3,23 +3,45 @@ import 'package:flutter/material.dart';
 // make time readable
 class MyDateUtil{
   static String getFormattedTime({required BuildContext context, required String time}){
-    final date = DateTime.fromMillisecondsSinceEpoch(int.parse(time));
+    final date = DateTime.fromMillisecondsSinceEpoch(int.tryParse(time) ?? 0);
     return TimeOfDay.fromDateTime(date).format(context);
   }
 
 // get last msg time
   static String getLastMessageTime(
-  {required BuildContext context, required String time}) {
-    final DateTime sent = DateTime.fromMillisecondsSinceEpoch(int.parse(time));
+      {required BuildContext context, required String time, bool showYear = false}) {
+    final DateTime sent = DateTime.fromMillisecondsSinceEpoch(int.tryParse(time) ?? 0);
     final DateTime now = DateTime.now();
 
-    if(now.day == sent.day && now.month == sent.month && now.year == sent.year){
+    if (now.day == sent.day && now.month == sent.month && now.year == sent.year) {
       return TimeOfDay.fromDateTime(sent).format(context);
     }
-    return '${sent.day} ${sent.month}';
+    return now.year == sent.year
+        ? '${sent.day} ${_getMonth(sent)}'
+        : '${sent.day} ${_getMonth(sent)} ${sent.year}';
   }
 
   // format active time
+  static String getLastActiveTime(
+      {required BuildContext context, required String lastActive}) {
+    final int i = int.tryParse(lastActive) ?? -1;
+    if (i == -1) return 'Last seen recently';
+
+    final DateTime time = DateTime.fromMillisecondsSinceEpoch(i);
+    final DateTime now = DateTime.now();
+
+    String formattedTime = TimeOfDay.fromDateTime(time).format(context);
+    if (time.day == now.day && time.month == now.month && time.year == now.year) {
+      return 'Last seen today at $formattedTime';
+    }
+
+    if ((now.difference(time).inHours / 24).round() == 1) {
+      return 'Last seen yesterday at $formattedTime';
+    }
+
+    String month = _getMonth(time);
+    return 'Last seen on ${time.day} $month at $formattedTime';
+  }
 
 
   // for showing last chatting month
