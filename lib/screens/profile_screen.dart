@@ -358,7 +358,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Material(
                     color: context.surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
                     clipBehavior: Clip.antiAlias,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -518,7 +517,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Material(
                     color: context.surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
                     clipBehavior: Clip.antiAlias,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
