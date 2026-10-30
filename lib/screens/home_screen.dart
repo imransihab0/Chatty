@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_theme.dart';
@@ -7,8 +8,9 @@ import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:chatty/widgets/chat_user_card.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+enum HomeFilter { all, online }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,9 +21,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<ChatUser> _list = [];
-  final List<ChatUser> _searchList = [];
   bool _isSearching = false;
+  HomeFilter _selectedFilter = HomeFilter.all;
+
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+  Timer? _debounceTimer;
+
+  List<ChatUser> _globalSearchResults = [];
+  bool _isLoadingGlobal = false;
 
   @override
   void initState() {
@@ -34,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _debounceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -49,6 +60,53 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           state == AppLifecycleState.inactive) {
         APIs.updateActiveStatus(false);
       }
+    }
+  }
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+    _searchFocusNode.requestFocus();
+  }
+
+  void _stopSearch() {
+    _debounceTimer?.cancel();
+    setState(() {
+      _isSearching = false;
+      _searchController.clear();
+      _searchQuery = '';
+      _globalSearchResults.clear();
+      _isLoadingGlobal = false;
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  void _onSearchChanged(String val) {
+    _debounceTimer?.cancel();
+    final query = val.trim().toLowerCase();
+    setState(() {
+      _searchQuery = query;
+    });
+
+    if (query.length >= 2) {
+      setState(() => _isLoadingGlobal = true);
+      _debounceTimer = Timer(const Duration(milliseconds: 350), () async {
+        final results = await APIs.searchUsers(query);
+        if (mounted) {
+          setState(() {
+            _globalSearchResults = results
+                .where((u) => !_list.any((local) => local.id == u.id))
+                .toList();
+            _isLoadingGlobal = false;
+          });
+        }
+      });
+    } else {
+      setState(() {
+        _globalSearchResults.clear();
+        _isLoadingGlobal = false;
+      });
     }
   }
 
@@ -148,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 Dialogs.showSnackbar(context, 'You cannot chat with yourself!');
                 return;
               }
+
               final userSnapshot = await APIs.firestore
                   .collection('users')
                   .where('email', isEqualTo: email)
@@ -187,193 +246,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         canPop: !_isSearching,
         onPopInvokedWithResult: (didPop, result) {
           if (!didPop && _isSearching) {
-            setState(() {
-              _isSearching = false;
-              _searchController.clear();
-              _searchList.clear();
-            });
+            _stopSearch();
           }
         },
         child: Scaffold(
           backgroundColor: context.backgroundColor,
-          appBar: AppBar(
-            backgroundColor: context.surfaceColor,
-            elevation: 0,
-            titleSpacing: 16,
-            title: _isSearching
-                ? TextField(
-                    controller: _searchController,
-                    autofocus: true,
+          appBar: _isSearching ? _searchAppBar() : _defaultAppBar(),
+          floatingActionButton: _isSearching
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: _addChatUserDialog,
+                  backgroundColor: AppTheme.primary,
+                  elevation: 4,
+                  icon: const Icon(Icons.add_comment_rounded,
+                      color: Colors.white, size: 20),
+                  label: const Text(
+                    'New Chat',
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 15,
-                      color: context.textPrimaryColor,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search friends or messages...',
-                      hintStyle: TextStyle(
-                        fontFamily: 'Lexend',
-                        color: context.textMutedColor,
-                        fontSize: 14,
-                      ),
-                      border: InputBorder.none,
-                      isDense: true,
-                      prefixIcon: Icon(CupertinoIcons.search,
-                          color: context.textSecondaryColor, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(CupertinoIcons.clear_circled_solid,
-                            color: context.textMutedColor, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          _searchList.clear();
-                          _searchList.addAll(_list);
-                          setState(() {});
-                        },
-                      ),
-                    ),
-                    onChanged: (val) {
-                      _searchList.clear();
-                      final query = val.trim().toLowerCase();
-                      if (query.isEmpty) {
-                        _searchList.addAll(_list);
-                      } else {
-                        for (var i in _list) {
-                          if (i.name.toLowerCase().contains(query) ||
-                              i.email.toLowerCase().contains(query)) {
-                            _searchList.add(i);
-                          }
-                        }
-                      }
-                      setState(() {});
-                    },
-                  )
-                : Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: context.primarySoftColor,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.chat_bubble_rounded,
-                            color: AppTheme.primary,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Chatty',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: context.textPrimaryColor,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-            actions: [
-              // Theme toggle button
-              IconButton(
-                splashRadius: 22,
-                tooltip: context.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-                onPressed: () => ThemeController.toggleTheme(),
-                icon: Icon(
-                  context.isDark
-                      ? Icons.light_mode_rounded
-                      : Icons.dark_mode_rounded,
-                  color: context.textPrimaryColor,
-                  size: 22,
-                ),
-              ),
-              IconButton(
-                splashRadius: 22,
-                onPressed: () {
-                  setState(() {
-                    _isSearching = !_isSearching;
-                    if (_isSearching) {
-                      _searchList.clear();
-                      _searchList.addAll(_list);
-                    } else {
-                      _searchController.clear();
-                      _searchList.clear();
-                    }
-                  });
-                },
-                icon: Icon(
-                  _isSearching
-                      ? CupertinoIcons.clear
-                      : CupertinoIcons.search,
-                  color: context.textPrimaryColor,
-                  size: 22,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 14, left: 2),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => ProfileScreen(user: APIs.me)));
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.primary, width: 1.5),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: CachedNetworkImage(
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                        imageUrl: APIs.me.image,
-                        errorWidget: (context, url, error) => CircleAvatar(
-                          radius: 16,
-                          backgroundColor: context.primarySoftColor,
-                          child: Text(
-                            APIs.me.name.isNotEmpty
-                                ? APIs.me.name[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primary,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _addChatUserDialog,
-            backgroundColor: AppTheme.primary,
-            elevation: 4,
-            icon: const Icon(Icons.add_comment_rounded,
-                color: Colors.white, size: 20),
-            label: const Text(
-              'New Chat',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ),
           body: StreamBuilder(
             stream: APIs.getAllUsers(),
             builder: (context, snapshot) {
@@ -396,73 +292,689 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           .toList() ??
                       [];
 
-                  final currentList =
-                      _isSearching ? _searchList : _list;
+                  final onlineCount =
+                      _list.where((u) => u.isOnline).length;
+                  final totalCount = _list.length;
 
-                  if (currentList.isNotEmpty) {
-                    return ListView.builder(
-                      itemCount: currentList.length,
-                      padding: const EdgeInsets.only(top: 8, bottom: 80),
-                      physics: const BouncingScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        return ChatUserCard(user: currentList[index]);
-                      },
-                    );
-                  } else {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: context.primarySoftColor,
-                                borderRadius: BorderRadius.circular(40),
-                              ),
-                              child: Icon(
-                                _isSearching
-                                    ? CupertinoIcons.search
-                                    : Icons.forum_outlined,
-                                color: AppTheme.primary,
-                                size: 36,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              _isSearching
-                                  ? 'No matches found'
-                                  : 'No conversations yet',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: context.textPrimaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _isSearching
-                                  ? 'Check your search query and try again.'
-                                  : 'Tap "New Chat" below to start a conversation with a friend!',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 14,
-                                color: context.textSecondaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                  // Apply filter & search query
+                  List<ChatUser> localFiltered = _list;
+
+                  if (_selectedFilter == HomeFilter.online) {
+                    localFiltered =
+                        localFiltered.where((u) => u.isOnline).toList();
                   }
+
+                  if (_searchQuery.isNotEmpty) {
+                    localFiltered = localFiltered
+                        .where((u) =>
+                            u.name.toLowerCase().contains(_searchQuery) ||
+                            u.email.toLowerCase().contains(_searchQuery) ||
+                            u.about.toLowerCase().contains(_searchQuery))
+                        .toList();
+                  }
+
+                  return Column(
+                    children: [
+                      // Quick Search Trigger Pill when not searching
+                      if (!_isSearching)
+                        GestureDetector(
+                          onTap: _startSearch,
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 11),
+                            decoration: BoxDecoration(
+                              color: context.surfaceMutedColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: context.borderColor),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.search_rounded,
+                                    color: context.textMutedColor, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Search chats, friends, or email...',
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 13,
+                                      color: context.textMutedColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // Filter Chips Bar (All vs Online)
+                      _filterChipsBar(
+                        _isSearching ? localFiltered.length : totalCount,
+                        _isSearching
+                            ? localFiltered.where((u) => u.isOnline).length
+                            : onlineCount,
+                      ),
+
+                      // Global search progress indicator
+                      if (_isLoadingGlobal)
+                        const LinearProgressIndicator(
+                          minHeight: 2,
+                          backgroundColor: Colors.transparent,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                        ),
+
+                      // Main List Content
+                      Expanded(
+                        child: _buildResultsList(localFiltered),
+                      ),
+                    ],
+                  );
               }
             },
           ),
         ),
+      ),
+    );
+  }
+
+  // Normal App Bar
+  AppBar _defaultAppBar() {
+    return AppBar(
+      backgroundColor: context.surfaceColor,
+      elevation: 0,
+      titleSpacing: 16,
+      title: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: context.primarySoftColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.chat_bubble_rounded,
+                color: AppTheme.primary,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Chatty',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: context.textPrimaryColor,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          splashRadius: 22,
+          tooltip: context.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          onPressed: () => ThemeController.toggleTheme(),
+          icon: Icon(
+            context.isDark
+                ? Icons.light_mode_rounded
+                : Icons.dark_mode_rounded,
+            color: context.textPrimaryColor,
+            size: 22,
+          ),
+        ),
+        IconButton(
+          splashRadius: 22,
+          tooltip: 'Search friends',
+          onPressed: _startSearch,
+          icon: Icon(
+            Icons.search_rounded,
+            color: context.textPrimaryColor,
+            size: 22,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 14, left: 2),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ProfileScreen(user: APIs.me)));
+            },
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.primary, width: 1.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: CachedNetworkImage(
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  imageUrl: APIs.me.image,
+                  errorWidget: (context, url, error) => CircleAvatar(
+                    radius: 16,
+                    backgroundColor: context.primarySoftColor,
+                    child: Text(
+                      APIs.me.name.isNotEmpty
+                          ? APIs.me.name[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Full-width Dedicated Search Bar
+  AppBar _searchAppBar() {
+    return AppBar(
+      backgroundColor: context.surfaceColor,
+      elevation: 0,
+      leading: IconButton(
+        splashRadius: 22,
+        tooltip: 'Exit search',
+        onPressed: _stopSearch,
+        icon: Icon(
+          Icons.arrow_back_rounded,
+          color: context.textPrimaryColor,
+        ),
+      ),
+      titleSpacing: 0,
+      title: Container(
+        height: 40,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: context.surfaceMutedColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.borderColor),
+        ),
+        child: TextField(
+          controller: _searchController,
+          focusNode: _searchFocusNode,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            color: context.textPrimaryColor,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Search chats, friends, or email...',
+            hintStyle: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: context.textMutedColor,
+            ),
+            border: InputBorder.none,
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: context.textSecondaryColor,
+              size: 20,
+            ),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    splashRadius: 18,
+                    icon: Icon(
+                      Icons.clear_rounded,
+                      color: context.textMutedColor,
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      _onSearchChanged('');
+                    },
+                  )
+                : null,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            isDense: true,
+          ),
+          onChanged: _onSearchChanged,
+        ),
+      ),
+    );
+  }
+
+  // Filter Chips Row
+  Widget _filterChipsBar(int totalCount, int onlineCount) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          _filterChip(
+            title: 'All',
+            count: totalCount,
+            isSelected: _selectedFilter == HomeFilter.all,
+            onTap: () => setState(() => _selectedFilter = HomeFilter.all),
+          ),
+          const SizedBox(width: 8),
+          _filterChip(
+            title: '🟢 Online',
+            count: onlineCount,
+            isSelected: _selectedFilter == HomeFilter.online,
+            onTap: () => setState(() => _selectedFilter = HomeFilter.online),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip({
+    required String title,
+    required int count,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : context.surfaceMutedColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppTheme.primary : context.borderColor,
+            width: 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? Colors.white : context.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.white.withValues(alpha: 0.25)
+                    : context.borderColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      isSelected ? Colors.white : context.textSecondaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Results List View with section support
+  Widget _buildResultsList(List<ChatUser> localFiltered) {
+    final bool hasLocal = localFiltered.isNotEmpty;
+    final bool hasGlobal = _globalSearchResults.isNotEmpty;
+
+    if (!hasLocal && !hasGlobal) {
+      if (_isSearching && _searchQuery.isNotEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: context.primarySoftColor,
+                    borderRadius: BorderRadius.circular(36),
+                  ),
+                  child: const Icon(
+                    Icons.search_off_rounded,
+                    color: AppTheme.primary,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'No matches found',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimaryColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'We couldn\'t find anyone matching "$_searchQuery". Try checking for typos or searching by full email address.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: context.textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged('');
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: const BorderSide(color: AppTheme.primary),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.clear_rounded, size: 16),
+                  label: const Text(
+                    'Clear Search',
+                    style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      if (_selectedFilter == HomeFilter.online) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: context.primarySoftColor,
+                    borderRadius: BorderRadius.circular(36),
+                  ),
+                  child: const Icon(
+                    Icons.person_off_outlined,
+                    color: AppTheme.primary,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'No friends online',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimaryColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'None of your contacts are currently active. Switch to "All" to view all chats.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: context.textSecondaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: context.primarySoftColor,
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                child: const Icon(
+                  Icons.forum_outlined,
+                  color: AppTheme.primary,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'No conversations yet',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap "New Chat" below to start a conversation with a friend!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: context.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(top: 4, bottom: 80),
+      physics: const BouncingScrollPhysics(),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      children: [
+        // Local Contacts Section
+        if (hasLocal) ...[
+          if (_isSearching && hasGlobal)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.people_alt_rounded,
+                      size: 15, color: AppTheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'MY CONVERSATIONS (${localFiltered.length})',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: context.textSecondaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ...localFiltered.map((user) => ChatUserCard(user: user)),
+        ],
+
+        // Global Directory Discovery Section
+        if (hasGlobal) ...[
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              children: [
+                const Icon(Icons.public_rounded,
+                    size: 15, color: AppTheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'GLOBAL DIRECTORY (${_globalSearchResults.length})',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: context.textSecondaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ..._globalSearchResults.map((user) => _globalUserCard(user)),
+        ],
+      ],
+    );
+  }
+
+  // Global Directory User Card with direct chat action
+  Widget _globalUserCard(ChatUser u) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.borderColor, width: 1),
+        boxShadow: context.softShadow,
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: CachedNetworkImage(
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              imageUrl: u.image,
+              errorWidget: (context, url, error) => CircleAvatar(
+                radius: 24,
+                backgroundColor: context.primarySoftColor,
+                child: Text(
+                  u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  u.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimaryColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  u.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: context.textSecondaryColor,
+                  ),
+                ),
+                if (u.about.isNotEmpty &&
+                    u.about != "Hey, I'm using Chatty!") ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    u.about,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: context.textMutedColor,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: const Icon(Icons.chat_bubble_rounded, size: 14),
+            label: const Text(
+              'Chat',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -9,11 +9,12 @@ import 'package:chatty/models/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Modern Chat Message Card with Long-press Actions
+// Modern Chat Message Card with Long-press Actions and Search Highlighting
 class MessageCard extends StatefulWidget {
-  const MessageCard({super.key, required this.message});
+  const MessageCard({super.key, required this.message, this.highlightQuery});
 
   final Message message;
+  final String? highlightQuery;
 
   @override
   State<MessageCard> createState() => _MessageCardState();
@@ -102,6 +103,45 @@ class _MessageCardState extends State<MessageCard> {
     );
   }
 
+  Widget _buildHighlightedText({
+    required String text,
+    required TextStyle baseStyle,
+    required Color highlightColor,
+    required Color highlightTextColor,
+  }) {
+    final query = widget.highlightQuery?.trim().toLowerCase() ?? '';
+    if (query.isEmpty || !text.toLowerCase().contains(query)) {
+      return Text(text, style: baseStyle);
+    }
+
+    final List<TextSpan> spans = [];
+    final lowerText = text.toLowerCase();
+    int start = 0;
+
+    while (true) {
+      final index = lowerText.indexOf(query, start);
+      if (index == -1) {
+        spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+        break;
+      }
+      if (index > start) {
+        spans.add(TextSpan(text: text.substring(start, index), style: baseStyle));
+      }
+      final matchEnd = index + query.length;
+      spans.add(TextSpan(
+        text: text.substring(index, matchEnd),
+        style: baseStyle.copyWith(
+          backgroundColor: highlightColor,
+          color: highlightTextColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ));
+      start = matchEnd;
+    }
+
+    return RichText(text: TextSpan(children: spans));
+  }
+
   // Sent by other person (Left aligned)
   Widget _otherMessage() {
     if (widget.message.read.isEmpty) {
@@ -131,14 +171,16 @@ class _MessageCardState extends State<MessageCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.message.type == Type.text)
-                  Text(
-                    widget.message.msg,
-                    style: TextStyle(
+                  _buildHighlightedText(
+                    text: widget.message.msg,
+                    baseStyle: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 15,
                       color: context.textPrimaryColor,
                       height: 1.35,
                     ),
+                    highlightColor: AppTheme.accent.withValues(alpha: 0.35),
+                    highlightTextColor: AppTheme.primary,
                   )
                 else
                   ClipRRect(
@@ -218,14 +260,16 @@ class _MessageCardState extends State<MessageCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.message.type == Type.text)
-                  Text(
-                    widget.message.msg,
-                    style: const TextStyle(
+                  _buildHighlightedText(
+                    text: widget.message.msg,
+                    baseStyle: const TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 15,
                       color: Colors.white,
                       height: 1.35,
                     ),
+                    highlightColor: Colors.black26,
+                    highlightTextColor: Colors.yellowAccent,
                   )
                 else
                   ClipRRect(

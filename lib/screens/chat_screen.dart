@@ -23,12 +23,24 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   List<Message> _list = [];
   final _textController = TextEditingController();
+  final _searchController = TextEditingController();
   bool _isUploading = false;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void dispose() {
     _textController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchController.clear();
+      _searchQuery = '';
+    });
   }
 
   Future<void> _sendImageFile(File file) async {
@@ -130,146 +142,244 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: BoxDecoration(
-            color: context.surfaceColor,
-            border: Border(bottom: BorderSide(color: context.borderColor, width: 1)),
+    return PopScope(
+      canPop: !_isSearching,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isSearching) {
+          _stopSearch();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: context.backgroundColor,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              border: Border(bottom: BorderSide(color: context.borderColor, width: 1)),
+            ),
+            child: SafeArea(child: _isSearching ? _searchAppBar() : _appBar()),
           ),
-          child: SafeArea(child: _appBar()),
         ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder(
-              stream: APIs.getAllMessages(widget.user),
-              builder: (context, snapshot) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.waiting:
-                  case ConnectionState.none:
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                      ),
-                    );
-
-                  case ConnectionState.active:
-                  case ConnectionState.done:
-                    final data = snapshot.data?.docs;
-                    _list = data
-                            ?.map((e) => Message.fromJson(e.data()))
-                            .toList() ??
-                        [];
-
-                    if (_list.isNotEmpty) {
-                      return ListView.builder(
-                        reverse: true,
-                        itemCount: _list.length,
-                        padding: const EdgeInsets.only(top: 10, bottom: 6),
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          return MessageCard(message: _list[index]);
-                        },
-                      );
-                    } else {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: context.primarySoftColor,
-                                  borderRadius: BorderRadius.circular(36),
-                                ),
-                                child: const Center(
-                                  child: Text('👋',
-                                      style: TextStyle(fontSize: 32)),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Say hello to ${widget.user.name}!',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: context.textPrimaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Send a message or photo to start your conversation.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 13,
-                                  color: context.textSecondaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
+        body: Column(
+          children: [
+            Expanded(
+              child: StreamBuilder(
+                stream: APIs.getAllMessages(widget.user),
+                builder: (context, snapshot) {
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.waiting:
+                    case ConnectionState.none:
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
                         ),
                       );
-                    }
-                }
-              },
-            ),
-          ),
 
-          // Uploading photo indicator
-          if (_isUploading)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                margin: const EdgeInsets.only(right: 16, bottom: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: context.borderColor),
-                  boxShadow: context.softShadow,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Uploading photo...',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: context.textSecondaryColor,
-                      ),
-                    ),
-                  ],
-                ),
+                    case ConnectionState.active:
+                    case ConnectionState.done:
+                      final data = snapshot.data?.docs;
+                      _list = data
+                              ?.map((e) => Message.fromJson(e.data()))
+                              .toList() ??
+                          [];
+
+                      final List<Message> displayedList = _searchQuery.isEmpty
+                          ? _list
+                          : _list
+                              .where((m) =>
+                                  m.type == Type.text &&
+                                  m.msg.toLowerCase().contains(_searchQuery))
+                              .toList();
+
+                      if (_isSearching &&
+                          _searchQuery.isNotEmpty &&
+                          displayedList.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 68,
+                                  height: 68,
+                                  decoration: BoxDecoration(
+                                    color: context.primarySoftColor,
+                                    borderRadius: BorderRadius.circular(34),
+                                  ),
+                                  child: const Icon(
+                                    Icons.search_off_rounded,
+                                    color: AppTheme.primary,
+                                    size: 32,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No messages found',
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: context.textPrimaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'No messages matching "$_searchQuery" were found in this chat.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 13,
+                                    color: context.textSecondaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (displayedList.isNotEmpty) {
+                        return Column(
+                          children: [
+                            if (_isSearching && _searchQuery.isNotEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 7, horizontal: 16),
+                                color: context.surfaceMutedColor,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.search_rounded,
+                                        size: 16,
+                                        color: context.textSecondaryColor),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${displayedList.length} ${displayedList.length == 1 ? 'match' : 'matches'} found',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.textSecondaryColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            Expanded(
+                              child: ListView.builder(
+                                reverse: true,
+                                itemCount: displayedList.length,
+                                padding: const EdgeInsets.only(top: 10, bottom: 6),
+                                physics: const BouncingScrollPhysics(),
+                                itemBuilder: (context, index) {
+                                  return MessageCard(
+                                    message: displayedList[index],
+                                    highlightQuery:
+                                        _isSearching ? _searchQuery : null,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 72,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    color: context.primarySoftColor,
+                                    borderRadius: BorderRadius.circular(36),
+                                  ),
+                                  child: const Center(
+                                    child: Text('👋',
+                                        style: TextStyle(fontSize: 32)),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Say hello to ${widget.user.name}!',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: context.textPrimaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Send a message or photo to start your conversation.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 13,
+                                    color: context.textSecondaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                  }
+                },
               ),
             ),
 
-          _chatInput(),
-        ],
+            // Uploading photo indicator
+            if (_isUploading)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 16, bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: context.borderColor),
+                    boxShadow: context.softShadow,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Uploading photo...',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: context.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (!_isSearching) _chatInput(),
+          ],
+        ),
       ),
     );
   }
@@ -398,6 +508,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             IconButton(
               splashRadius: 22,
+              tooltip: 'Search messages',
+              onPressed: () => setState(() => _isSearching = true),
+              icon: Icon(
+                Icons.search_rounded,
+                color: context.textSecondaryColor,
+              ),
+            ),
+            IconButton(
+              splashRadius: 22,
               onPressed: () => _showUserProfileDialog(currentUser),
               icon: Icon(
                 Icons.info_outline_rounded,
@@ -407,6 +526,76 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         );
       },
+    );
+  }
+
+  // Dedicated In-Chat Search Bar
+  Widget _searchAppBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            splashRadius: 22,
+            tooltip: 'Close search',
+            onPressed: _stopSearch,
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              color: context.textPrimaryColor,
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.surfaceMutedColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: context.textPrimaryColor,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search in conversation...',
+                  hintStyle: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    color: context.textMutedColor,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: context.textSecondaryColor,
+                    size: 20,
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          splashRadius: 16,
+                          icon: Icon(Icons.clear_rounded,
+                              color: context.textMutedColor, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  isDense: true,
+                ),
+                onChanged: (val) {
+                  setState(() => _searchQuery = val.trim().toLowerCase());
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
     );
   }
 
