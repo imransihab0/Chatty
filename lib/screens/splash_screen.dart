@@ -97,13 +97,13 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
                         valueColor:
-                            AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                            AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
                       ),
                     ),
                     const SizedBox(height: 18),

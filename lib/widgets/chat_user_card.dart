@@ -51,7 +51,7 @@ class _ChatUserCardState extends State<ChatUserCard> {
                 ListTile(
                   leading: Icon(
                     isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
-                    color: AppTheme.primary,
+                    color: context.textPrimaryColor,
                   ),
                   title: Text(
                     isPinned ? 'Unpin from Top' : 'Pin to Top',
@@ -71,8 +71,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.person_outline_rounded,
-                      color: AppTheme.primary),
+                  leading: Icon(Icons.person_outline_rounded,
+                      color: context.textPrimaryColor),
                   title: Text(
                     'View Profile',
                     style: TextStyle(
@@ -120,7 +120,7 @@ class _ChatUserCardState extends State<ChatUserCard> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         alignment: Alignment.centerLeft,
         decoration: BoxDecoration(
-          color: AppTheme.primary,
+          color: context.isDark ? const Color(0xFF2C2C2C) : const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
@@ -149,14 +149,14 @@ class _ChatUserCardState extends State<ChatUserCard> {
           color: isPinned
               ? (context.isDark
                   ? const Color(0xFF1E1E1E)
-                  : AppTheme.primarySoft)
+                  : const Color(0xFFF0F0F2))
               : context.surfaceColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isPinned
                 ? (context.isDark
                     ? const Color(0xFF444444)
-                    : AppTheme.primary.withValues(alpha: 0.45))
+                    : const Color(0xFFD4D4D8))
                 : context.borderColor,
             width: isPinned ? 1.5 : 1,
           ),
@@ -242,10 +242,10 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                       currentUser.name.isNotEmpty
                                           ? currentUser.name[0].toUpperCase()
                                           : '?',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: 'Lexend',
                                         fontWeight: FontWeight.w700,
-                                        color: AppTheme.primary,
+                                        color: context.textPrimaryColor,
                                         fontSize: 20,
                                       ),
                                     ),
@@ -298,10 +298,10 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                   ),
                                   if (isPinned) ...[
                                     const SizedBox(width: 4),
-                                    const Icon(
+                                    Icon(
                                       Icons.push_pin_rounded,
                                       size: 14,
-                                      color: AppTheme.primary,
+                                      color: context.textPrimaryColor,
                                     ),
                                   ],
                                 ],
@@ -382,7 +382,7 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                     color: isUnread
                                         ? (context.isDark
                                             ? Colors.white
-                                            : AppTheme.primary)
+                                            : Colors.black)
                                         : context.textMutedColor,
                                   ),
                                 ),
@@ -394,7 +394,7 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                     decoration: BoxDecoration(
                                       color: context.isDark
                                           ? Colors.white
-                                          : AppTheme.primary,
+                                          : Colors.black,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(

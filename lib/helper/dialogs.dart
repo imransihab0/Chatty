@@ -7,14 +7,15 @@ class Dialogs {
       SnackBar(
         content: Text(
           msg,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Colors.white,
+            color: context.isDark ? Colors.black : Colors.white,
           ),
         ),
-        backgroundColor: AppTheme.textPrimary,
+        backgroundColor:
+            context.isDark ? Colors.white : const Color(0xFF18181B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -32,14 +33,15 @@ class Dialogs {
           width: 70,
           height: 70,
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: AppTheme.softShadow,
+            boxShadow: context.softShadow,
           ),
           padding: const EdgeInsets.all(18),
           child: CircularProgressIndicator(
             strokeWidth: 3,
-            valueColor: AlwaysStoppedAnimation<Color>(color ?? AppTheme.primary),
+            valueColor: AlwaysStoppedAnimation<Color>(
+                color ?? (context.isDark ? Colors.white : Colors.black)),
           ),
         ),
       ),

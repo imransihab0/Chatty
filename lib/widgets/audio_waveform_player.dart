@@ -67,7 +67,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
   @override
   Widget build(BuildContext context) {
     final activeBarColor =
-        widget.isMe ? const Color(0xFF67E8F9) : AppTheme.primary;
+        widget.isMe ? Colors.white : context.textPrimaryColor;
     final inactiveBarColor = widget.isMe
         ? Colors.white.withValues(alpha: 0.35)
         : context.borderColor;
@@ -93,7 +93,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
               ),
               child: Icon(
                 _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: widget.isMe ? Colors.white : AppTheme.primary,
+                color: widget.isMe ? Colors.white : context.textPrimaryColor,
                 size: 24,
               ),
             ),
@@ -145,10 +145,10 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                             : context.textMutedColor,
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.graphic_eq_rounded,
                       size: 13,
-                      color: Colors.white70,
+                      color: widget.isMe ? Colors.white70 : context.textMutedColor,
                     ),
                   ],
                 ),

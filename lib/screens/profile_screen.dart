@@ -93,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (confirm != true || !mounted) return;
 
-    Dialogs.showProgressbar(context, color: AppTheme.primary);
+    Dialogs.showProgressbar(context);
     await APIs.updateActiveStatus(false);
     await APIs.auth.signOut();
     await GoogleSignIn().signOut();
@@ -154,8 +154,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt_outlined,
-                      color: AppTheme.primary),
+                  leading: Icon(Icons.camera_alt_outlined,
+                      color: context.textPrimaryColor),
                   title: Text(
                     'Take Photo',
                     style: TextStyle(
@@ -183,8 +183,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo_library_outlined,
-                      color: AppTheme.primary),
+                  leading: Icon(Icons.photo_library_outlined,
+                      color: context.textPrimaryColor),
                   title: Text(
                     'Choose from Library',
                     style: TextStyle(
@@ -312,9 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             fontFamily: 'Lexend',
                                             fontSize: 38,
                                             fontWeight: FontWeight.w700,
-                                            color: context.isDark
-                                                ? Colors.white
-                                                : AppTheme.primary,
+                                            color: context.textPrimaryColor,
                                           ),
                                         )
                                       : null,
@@ -331,7 +329,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               decoration: BoxDecoration(
                                 color: context.isDark
                                     ? Colors.white
-                                    : AppTheme.primary,
+                                    : Colors.black,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: context.surfaceColor,
@@ -537,7 +535,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         value: context.isDark,
-                        activeThumbColor: AppTheme.primary,
+                        activeTrackColor:
+                            context.isDark ? Colors.white : Colors.black,
+                        activeColor:
+                            context.isDark ? Colors.black : Colors.white,
                         onChanged: (_) {
                           AppHaptics.medium();
                           ThemeController.toggleTheme();
@@ -557,7 +558,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         value: AppHaptics.enabled,
-                        activeThumbColor: AppTheme.primary,
+                        activeTrackColor:
+                            context.isDark ? Colors.white : Colors.black,
+                        activeColor:
+                            context.isDark ? Colors.black : Colors.white,
                         onChanged: (val) {
                           setState(() => AppHaptics.enabled = val);
                           AppHaptics.selection();
@@ -580,7 +584,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: _isUpdating ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            context.isDark ? Colors.white : AppTheme.primary,
+                            context.isDark ? Colors.white : Colors.black,
                         foregroundColor:
                             context.isDark ? Colors.black : Colors.white,
                         elevation: 0,

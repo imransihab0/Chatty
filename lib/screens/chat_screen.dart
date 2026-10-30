@@ -148,11 +148,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           currentUser.name.isNotEmpty
                               ? currentUser.name[0].toUpperCase()
                               : '?',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 32,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.primary,
+                            color: context.textPrimaryColor,
                           ),
                         )
                       : null,
@@ -257,11 +257,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   switch (snapshot.connectionState) {
                     case ConnectionState.waiting:
                     case ConnectionState.none:
-                      return const Center(
+                      return Center(
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              context.isDark ? Colors.white : Colors.black),
                         ),
                       );
 
@@ -297,9 +297,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                     color: context.primarySoftColor,
                                     borderRadius: BorderRadius.circular(34),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.search_off_rounded,
-                                    color: AppTheme.primary,
+                                    color: context.textPrimaryColor,
                                     size: 32,
                                   ),
                                 ),
@@ -443,13 +443,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(
+                      SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              context.isDark ? Colors.white : Colors.black),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -524,10 +524,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                   currentUser.name.isNotEmpty
                                       ? currentUser.name[0].toUpperCase()
                                       : '?',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Lexend',
                                     fontWeight: FontWeight.w700,
-                                    color: AppTheme.primary,
+                                    color: context.textPrimaryColor,
                                     fontSize: 16,
                                   ),
                                 ),
@@ -751,7 +751,7 @@ class _ChatScreenState extends State<ChatScreen> {
             width: 3.5,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.primary,
+              color: context.isDark ? Colors.white : Colors.black,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -763,16 +763,17 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.reply_rounded,
-                        size: 14, color: AppTheme.primary),
+                    Icon(Icons.reply_rounded,
+                        size: 14,
+                        color: context.isDark ? Colors.white : Colors.black),
                     const SizedBox(width: 4),
                     Text(
                       'Replying to $senderName',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.primary,
+                        color: context.isDark ? Colors.white : Colors.black,
                       ),
                     ),
                   ],
@@ -941,7 +942,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: context.isDark ? Colors.white : AppTheme.primary,
+                    color: context.isDark ? Colors.white : Colors.black,
                     shape: BoxShape.circle,
                     boxShadow: context.isDark ? null : AppTheme.buttonShadow,
                   ),

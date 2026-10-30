@@ -84,12 +84,14 @@ class _MessageCardState extends State<MessageCard> {
                               horizontal: 6, vertical: 4),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppTheme.primary.withValues(alpha: 0.22)
+                                ? (context.isDark
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : Colors.black.withValues(alpha: 0.1))
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(16),
                             border: isSelected
                                 ? Border.all(
-                                    color: AppTheme.primary, width: 1.5)
+                                    color: context.textPrimaryColor, width: 1.5)
                                 : null,
                           ),
                           child: Text(
@@ -104,7 +106,7 @@ class _MessageCardState extends State<MessageCard> {
                 const SizedBox(height: 8),
                 // Reply Action
                 ListTile(
-                  leading: const Icon(Icons.reply_rounded, color: AppTheme.primary),
+                  leading: Icon(Icons.reply_rounded, color: context.textPrimaryColor),
                   title: Text(
                     'Reply',
                     style: TextStyle(
@@ -123,7 +125,7 @@ class _MessageCardState extends State<MessageCard> {
                 ),
                 if (widget.message.type == Type.text)
                   ListTile(
-                    leading: const Icon(Icons.copy_rounded, color: AppTheme.primary),
+                    leading: Icon(Icons.copy_rounded, color: context.textPrimaryColor),
                     title: Text(
                       'Copy Text',
                       style: TextStyle(
@@ -189,12 +191,13 @@ class _MessageCardState extends State<MessageCard> {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.18),
+            color: (context.isDark ? Colors.white : Colors.black)
+                .withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.reply_rounded,
-            color: AppTheme.primary,
+            color: context.isDark ? Colors.white : Colors.black,
             size: 20,
           ),
         ),
@@ -225,7 +228,7 @@ class _MessageCardState extends State<MessageCard> {
           left: BorderSide(
             color: isMe
                 ? Colors.white
-                : (context.isDark ? Colors.white : AppTheme.primary),
+                : (context.isDark ? Colors.white : Colors.black),
             width: 3.5,
           ),
         ),
@@ -244,7 +247,7 @@ class _MessageCardState extends State<MessageCard> {
               fontWeight: FontWeight.w700,
               color: isMe
                   ? Colors.white
-                  : (context.isDark ? Colors.white : AppTheme.primary),
+                  : (context.isDark ? Colors.white : Colors.black),
             ),
           ),
           const SizedBox(height: 2),
@@ -349,8 +352,10 @@ class _MessageCardState extends State<MessageCard> {
                             color: context.textPrimaryColor,
                             height: 1.35,
                           ),
-                          highlightColor: AppTheme.accent.withValues(alpha: 0.35),
-                          highlightTextColor: AppTheme.primary,
+                          highlightColor: context.isDark
+                              ? const Color(0xFF333333)
+                              : const Color(0xFFE4E4E7),
+                          highlightTextColor: context.textPrimaryColor,
                         )
                       else if (widget.message.type == Type.audio)
                         AudioWaveformPlayer(
@@ -465,7 +470,7 @@ class _MessageCardState extends State<MessageCard> {
                           end: Alignment.bottomRight,
                         )
                       : const LinearGradient(
-                          colors: [AppTheme.primary, AppTheme.primaryLight],
+                          colors: [Color(0xFF1C1C1E), Color(0xFF000000)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -482,7 +487,7 @@ class _MessageCardState extends State<MessageCard> {
                       ? null
                       : [
                           BoxShadow(
-                            color: AppTheme.primary.withValues(alpha: 0.22),
+                            color: Colors.black.withValues(alpha: 0.12),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),

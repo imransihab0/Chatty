@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 12),
         title: Row(
           children: [
-            const Icon(Icons.person_add_rounded, color: AppTheme.primary, size: 26),
+            Icon(Icons.person_add_rounded, color: context.textPrimaryColor, size: 26),
             const SizedBox(width: 10),
             Text(
               'Add Friend',
@@ -168,8 +168,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   color: context.textMutedColor,
                   fontSize: 14,
                 ),
-                prefixIcon: const Icon(Icons.email_outlined,
-                    color: AppTheme.primary, size: 20),
+                prefixIcon: Icon(Icons.email_outlined,
+                    color: context.textSecondaryColor, size: 20),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 filled: true,
@@ -197,8 +197,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: context.isDark ? Colors.white : Colors.black,
+              foregroundColor: context.isDark ? Colors.black : Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               elevation: 0,
@@ -261,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               : FloatingActionButton.extended(
                   onPressed: _addChatUserDialog,
                   backgroundColor:
-                      context.isDark ? Colors.white : AppTheme.primary,
+                      context.isDark ? Colors.white : Colors.black,
                   elevation: 4,
                   icon: Icon(Icons.add_comment_rounded,
                       color: context.isDark ? Colors.black : Colors.white,
@@ -282,11 +282,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               switch (snapshot.connectionState) {
                 case ConnectionState.waiting:
                 case ConnectionState.none:
-                  return const Center(
+                  return Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
                       valueColor:
-                          AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                          AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
                     ),
                   );
 
@@ -364,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Center(
               child: Icon(
                 Icons.chat_bubble_rounded,
-                color: context.isDark ? Colors.white : AppTheme.primary,
+                color: context.textPrimaryColor,
                 size: 20,
               ),
             ),
@@ -423,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: context.isDark ? const Color(0xFF444444) : AppTheme.primary,
+                    color: context.isDark ? const Color(0xFF444444) : const Color(0xFFCCCCCC),
                     width: 1.5),
               ),
               child: ClipRRect(
@@ -443,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
-                        color: context.isDark ? Colors.white : AppTheme.primary,
+                        color: context.textPrimaryColor,
                         fontSize: 14,
                       ),
                     ),
@@ -547,7 +547,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: hasLiveOnline ? AppTheme.success : AppTheme.primary,
+                    color: hasLiveOnline
+                        ? AppTheme.success
+                        : (context.isDark
+                            ? const Color(0xFF555555)
+                            : const Color(0xFF999999)),
                     shape: BoxShape.circle,
                     boxShadow: hasLiveOnline
                         ? [
@@ -624,8 +628,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                 const Color(0xFF222222)
                                               ]
                                             : [
-                                                AppTheme.primary.withValues(alpha: 0.45),
-                                                AppTheme.accent.withValues(alpha: 0.3)
+                                                const Color(0xFFD4D4D8),
+                                                const Color(0xFFE4E4E7)
                                               ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
@@ -646,10 +650,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       user.name.isNotEmpty
                                           ? user.name[0].toUpperCase()
                                           : '?',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: 'Lexend',
                                         fontWeight: FontWeight.w700,
-                                        color: AppTheme.primary,
+                                        color: context.textPrimaryColor,
                                         fontSize: 16,
                                       ),
                                     ),
@@ -742,20 +746,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? (context.isDark ? Colors.white : AppTheme.primary)
+              ? (context.isDark ? Colors.white : Colors.black)
               : context.surfaceMutedColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? (context.isDark ? Colors.white : AppTheme.primary)
+                ? (context.isDark ? Colors.white : Colors.black)
                 : context.borderColor,
             width: 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: (context.isDark ? Colors.white : AppTheme.primary)
-                        .withValues(alpha: context.isDark ? 0.15 : 0.25),
+                    color: (context.isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: context.isDark ? 0.15 : 0.15),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   )
@@ -870,10 +874,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Global search progress indicator
         if (_isLoadingGlobal)
-          const LinearProgressIndicator(
+          LinearProgressIndicator(
             minHeight: 2,
             backgroundColor: Colors.transparent,
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+            valueColor: AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
           ),
 
         // Empty state when no matches/chats exist
@@ -887,8 +891,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.people_alt_rounded,
-                        size: 15, color: AppTheme.primary),
+                    Icon(Icons.people_alt_rounded,
+                        size: 15, color: context.textPrimaryColor),
                     const SizedBox(width: 6),
                     Text(
                       'MY CONVERSATIONS (${localFiltered.length})',
@@ -913,8 +917,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Row(
                 children: [
-                  const Icon(Icons.public_rounded,
-                      size: 15, color: AppTheme.primary),
+                  Icon(Icons.public_rounded,
+                      size: 15, color: context.textPrimaryColor),
                   const SizedBox(width: 6),
                   Text(
                     'GLOBAL DIRECTORY (${_globalSearchResults.length})',
@@ -952,9 +956,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   color: context.primarySoftColor,
                   borderRadius: BorderRadius.circular(36),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.search_off_rounded,
-                  color: AppTheme.primary,
+                  color: context.textPrimaryColor,
                   size: 34,
                 ),
               ),
@@ -985,8 +989,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _onSearchChanged('');
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primary,
-                  side: const BorderSide(color: AppTheme.primary),
+                  foregroundColor: context.textPrimaryColor,
+                  side: BorderSide(color: context.borderColor),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -1016,9 +1020,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   color: context.primarySoftColor,
                   borderRadius: BorderRadius.circular(36),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_off_outlined,
-                  color: AppTheme.primary,
+                  color: context.textPrimaryColor,
                   size: 34,
                 ),
               ),
@@ -1061,9 +1065,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 color: context.primarySoftColor,
                 borderRadius: BorderRadius.circular(40),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.forum_outlined,
-                color: AppTheme.primary,
+                color: context.textPrimaryColor,
                 size: 36,
               ),
             ),
@@ -1118,10 +1122,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 backgroundColor: context.primarySoftColor,
                 child: Text(
                   u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.primary,
+                    color: context.textPrimaryColor,
                     fontSize: 16,
                   ),
                 ),
@@ -1182,8 +1186,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: context.isDark ? Colors.white : Colors.black,
+              foregroundColor: context.isDark ? Colors.black : Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

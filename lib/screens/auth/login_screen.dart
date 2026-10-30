@@ -19,7 +19,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleBtnClick() async {
-    Dialogs.showProgressbar(context, color: AppTheme.primary);
+    Dialogs.showProgressbar(context);
     final user = await _signInWithGoogle();
 
     if (!mounted) return;

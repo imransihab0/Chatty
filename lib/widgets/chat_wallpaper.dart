@@ -13,7 +13,7 @@ class ChatWallpaper extends StatelessWidget {
       painter: _DoodlePatternPainter(
         color: context.isDark
             ? Colors.white.withValues(alpha: 0.035)
-            : AppTheme.primary.withValues(alpha: 0.045),
+            : Colors.black.withValues(alpha: 0.035),
       ),
       child: child,
     );

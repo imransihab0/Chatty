@@ -100,7 +100,7 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           valueColor:
-                              AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                              const AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                       errorWidget: (context, url, error) => Column(

@@ -2,27 +2,27 @@ import 'package:flutter/material.dart';
 
 /// Central Design System & Theme for Chatty (Light & Dark Mode)
 class AppTheme {
-  // Brand Colors
-  static const Color primary = Color(0xFF4F46E5); // Modern Indigo
-  static const Color primaryDark = Color(0xFF3730A3);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primarySoft = Color(0xFFEEF2FF);
+  // Brand Colors (Pure Monochrome - Zero Blue)
+  static const Color primary = Color(0xFF000000); // Crisp Pure Black in Light Mode
+  static const Color primaryDark = Color(0xFF000000);
+  static const Color primaryLight = Color(0xFF262626);
+  static const Color primarySoft = Color(0xFFF4F4F5); // Neutral Grey Accent (0% Blue)
 
-  static const Color secondary = Color(0xFF0EA5E9); // Sky Blue
-  static const Color accent = Color(0xFFF59E0B); // Amber
+  static const Color secondary = Color(0xFF27272A); // Neutral Dark Charcoal
+  static const Color accent = Color(0xFF71717A); // Neutral Mid Grey
   static const Color success = Color(0xFF10B981); // Emerald Green (online)
   static const Color danger = Color(0xFFEF4444); // Red (logout/error)
 
-  // Light Mode Colors
-  static const Color background = Color(0xFFF8FAFC); // Slate 50
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF1F5F9); // Slate 100
-  static const Color border = Color(0xFFE2E8F0); // Slate 200
-  static const Color borderLight = Color(0xFFF1F5F9);
+  // Light Mode Colors (Pure White & Black Monochrome - Zero Blue/Slate)
+  static const Color background = Color(0xFFF7F7F8); // Neutral Light Background (0% blue)
+  static const Color surface = Color(0xFFFFFFFF); // Crisp Pure White
+  static const Color surfaceMuted = Color(0xFFF0F0F2); // Pure Neutral Light Grey
+  static const Color border = Color(0xFFE4E4E7); // Pure Neutral Border
+  static const Color borderLight = Color(0xFFF4F4F5);
 
-  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
-  static const Color textSecondary = Color(0xFF64748B); // Slate 500
-  static const Color textMuted = Color(0xFF94A3B8); // Slate 400
+  static const Color textPrimary = Color(0xFF09090B); // Pure Crisp Black
+  static const Color textSecondary = Color(0xFF52525B); // Neutral Mid Grey
+  static const Color textMuted = Color(0xFFA1A1AA); // Neutral Muted Grey
   static const Color textWhite = Color(0xFFFFFFFF);
 
   // Dark Mode Colors (Pure Black & White Monochrome - Zero Blue)
@@ -42,7 +42,7 @@ class AppTheme {
   // Shadows
   static List<BoxShadow> get softShadow => [
         BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+          color: Colors.black.withValues(alpha: 0.04),
           blurRadius: 12,
           offset: const Offset(0, 4),
         ),
@@ -58,25 +58,29 @@ class AppTheme {
 
   static List<BoxShadow> get buttonShadow => [
         BoxShadow(
-          color: primary.withValues(alpha: 0.3),
-          blurRadius: 12,
+          color: Colors.black.withValues(alpha: 0.15),
+          blurRadius: 10,
           offset: const Offset(0, 4),
         ),
       ];
 
-  // Light Theme
+  // Light Theme (Pure Black & White Monochrome - Zero Blue)
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       splashFactory: InkRipple.splashFactory,
       brightness: Brightness.light,
       fontFamily: 'Lexend',
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
+      colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: primary,
+        onPrimary: Colors.white,
         secondary: secondary,
+        onSecondary: Colors.white,
+        error: danger,
+        onError: Colors.white,
         surface: surface,
+        onSurface: textPrimary,
       ),
       scaffoldBackgroundColor: background,
       appBarTheme: const AppBarTheme(
@@ -116,6 +120,18 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: textPrimary,
         ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+          return states.contains(WidgetState.selected)
+              ? Colors.white
+              : const Color(0xFF71717A);
+        }),
+        trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+          return states.contains(WidgetState.selected)
+              ? Colors.black
+              : const Color(0xFFE4E4E7);
+        }),
       ),
     );
   }
@@ -176,6 +192,18 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: darkTextPrimary,
         ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+          return states.contains(WidgetState.selected)
+              ? Colors.black
+              : const Color(0xFFA1A1AA);
+        }),
+        trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+          return states.contains(WidgetState.selected)
+              ? Colors.white
+              : const Color(0xFF27272A);
+        }),
       ),
     );
   }
