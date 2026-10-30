@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../api/apis.dart';
 import '../helper/app_haptics.dart';
@@ -97,195 +96,112 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _showUserProfileDialog(ChatUser currentUser) {
     AppHaptics.medium();
-    final String joinedDate = MyDateUtil.getJoinedDate(currentUser.createdAt);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: context.surfaceColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Top drag pill
               Container(
-                width: 44,
-                height: 4.5,
+                width: 36,
+                height: 4,
                 decoration: BoxDecoration(
                   color: context.borderColor,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // Ambient Banner & Avatar Hero
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    height: 90,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primary, Color(0xFF0EA5E9)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      if (currentUser.image.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MediaViewerScreen(
-                              imageUrl: currentUser.image,
-                              title: currentUser.name,
-                              timestamp: 'Profile Photo',
-                              heroTag: 'chat_user_avatar_${currentUser.id}',
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(3.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: context.surfaceColor,
-                        boxShadow: context.softShadow,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(45),
-                        child: CachedNetworkImage(
-                          width: 86,
-                          height: 86,
-                          fit: BoxFit.cover,
+              // Clean Circular Avatar
+              GestureDetector(
+                onTap: () {
+                  if (currentUser.image.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MediaViewerScreen(
                           imageUrl: currentUser.image,
-                          errorWidget: (context, url, error) => CircleAvatar(
-                            radius: 43,
-                            backgroundColor: context.primarySoftColor,
-                            child: Text(
-                              currentUser.name.isNotEmpty
-                                  ? currentUser.name[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.primary,
-                              ),
-                            ),
-                          ),
+                          title: currentUser.name,
+                          timestamp: 'Profile Photo',
+                          heroTag: 'chat_user_avatar_${currentUser.id}',
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                    );
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 46,
+                  backgroundColor: context.surfaceMutedColor,
+                  backgroundImage: currentUser.image.isNotEmpty
+                      ? CachedNetworkImageProvider(currentUser.image)
+                      : null,
+                  child: currentUser.image.isEmpty
+                      ? Text(
+                          currentUser.name.isNotEmpty
+                              ? currentUser.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary,
+                          ),
+                        )
+                      : null,
+                ),
               ),
               const SizedBox(height: 12),
 
-              // Name & Status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      currentUser.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: context.textPrimaryColor,
-                      ),
-                    ),
-                  ),
-                  if (currentUser.isOnline) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 9,
-                      height: 9,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.success,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 6),
-
-              // Email Copy Chip
-              InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: currentUser.email));
-                  AppHaptics.light();
-                  Dialogs.showSnackbar(context, 'Email copied to clipboard!');
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: context.surfaceMutedColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: context.borderColor),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.alternate_email_rounded,
-                          size: 13, color: context.textSecondaryColor),
-                      const SizedBox(width: 5),
-                      Text(
-                        currentUser.email,
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                          color: context.textSecondaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Icon(Icons.copy_rounded,
-                          size: 11, color: context.textMutedColor),
-                    ],
-                  ),
+              Text(
+                currentUser.name,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimaryColor,
                 ),
               ),
-
-              const SizedBox(height: 14),
+              const SizedBox(height: 2),
+              Text(
+                currentUser.email,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textSecondaryColor,
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // About Box
               Container(
                 width: double.infinity,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: context.surfaceMutedColor,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: context.borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ABOUT',
+                      'About',
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                        color: context.textMutedColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondaryColor,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -295,73 +211,12 @@ class _ChatScreenState extends State<ChatScreen> {
                           : "Hey, I'm using Chatty!",
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 13,
+                        fontSize: 14,
                         color: context.textPrimaryColor,
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Quick Info row (Joined Date & Security)
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: context.surfaceMutedColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: context.borderColor),
-                      ),
-                      child: Column(
-                        children: [
-                          Text('Member Since',
-                              style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 10,
-                                  color: context.textMutedColor)),
-                          const SizedBox(height: 2),
-                          Text(joinedDate,
-                              style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.textPrimaryColor)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: context.surfaceMutedColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: context.borderColor),
-                      ),
-                      child: Column(
-                        children: [
-                          Text('Encryption',
-                              style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 10,
-                                  color: context.textMutedColor)),
-                          const SizedBox(height: 2),
-                          const Text('🔒 Direct E2E',
-                              style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.primary)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
               const SizedBox(height: 16),
             ],
