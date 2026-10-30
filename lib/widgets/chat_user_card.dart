@@ -9,6 +9,7 @@ import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class ChatUserCard extends StatefulWidget {
@@ -22,6 +23,29 @@ class ChatUserCard extends StatefulWidget {
 
 class _ChatUserCardState extends State<ChatUserCard> {
   Message? _message;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _userInfoStream;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _lastMessageStream;
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _chatMetaStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _initStreams();
+  }
+
+  void _initStreams() {
+    _userInfoStream = APIs.getUserInfo(widget.user);
+    _lastMessageStream = APIs.getLastMessages(widget.user);
+    _chatMetaStream = APIs.getChatMeta(widget.user);
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatUserCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.id != widget.user.id) {
+      _initStreams();
+    }
+  }
 
   void _showChatOptions(bool isPinned, ChatUser currentUser) {
     showModalBottomSheet(
@@ -176,8 +200,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
                   MaterialPageRoute(
                       builder: (_) => ChatScreen(user: widget.user)));
             },
-          child: StreamBuilder(
-            stream: APIs.getUserInfo(widget.user),
+          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _userInfoStream,
             builder: (context, userSnapshot) {
               final userData = userSnapshot.data?.docs;
               final userList = userData
@@ -187,8 +211,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
               final currentUser =
                   userList.isNotEmpty ? userList[0] : widget.user;
 
-              return StreamBuilder(
-                stream: APIs.getLastMessages(widget.user),
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _lastMessageStream,
                 builder: (context, msgSnapshot) {
                   final data = msgSnapshot.data?.docs;
                   final list = data
@@ -307,8 +331,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              StreamBuilder(
-                                stream: APIs.getChatMeta(widget.user),
+                              StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                stream: _chatMetaStream,
                                 builder: (context, metaSnap) {
                                   final metaData = metaSnap.data?.data();
                                   final bool isTyping = metaData?[

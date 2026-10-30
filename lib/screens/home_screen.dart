@@ -10,6 +10,7 @@ import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:chatty/widgets/chat_user_card.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 enum HomeFilter { all, online }
@@ -34,9 +35,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<ChatUser> _globalSearchResults = [];
   bool _isLoadingGlobal = false;
 
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _usersStream;
+
   @override
   void initState() {
     super.initState();
+    _usersStream = APIs.getAllUsers();
     APIs.getMyInfo();
     WidgetsBinding.instance.addObserver(this);
     APIs.updateActiveStatus(true);
@@ -276,69 +280,66 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-          body: StreamBuilder(
-            stream: APIs.getAllUsers(),
+          body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _usersStream,
             builder: (context, snapshot) {
-              switch (snapshot.connectionState) {
-                case ConnectionState.waiting:
-                case ConnectionState.none:
-                  return Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
-                    ),
-                  );
+              if (snapshot.hasData) {
+                final data = snapshot.data?.docs;
+                _list = data
+                        ?.map((e) => ChatUser.fromJson(e.data()))
+                        .toList() ??
+                    [];
 
-                case ConnectionState.active:
-                case ConnectionState.done:
-                  final data = snapshot.data?.docs;
-                  _list = data
-                          ?.map((e) => ChatUser.fromJson(e.data()))
-                          .toList() ??
-                      [];
+                final onlineCount =
+                    _list.where((u) => u.isOnline).length;
+                final totalCount = _list.length;
 
-                  final onlineCount =
-                      _list.where((u) => u.isOnline).length;
-                  final totalCount = _list.length;
+                // Apply filter & search query
+                List<ChatUser> localFiltered = List.from(_list);
 
-                  // Apply filter & search query
-                  List<ChatUser> localFiltered = _list;
+                if (_selectedFilter == HomeFilter.online) {
+                  localFiltered =
+                      localFiltered.where((u) => u.isOnline).toList();
+                }
 
-                  if (_selectedFilter == HomeFilter.online) {
-                    localFiltered =
-                        localFiltered.where((u) => u.isOnline).toList();
-                  }
+                if (_searchQuery.isNotEmpty) {
+                  localFiltered = localFiltered
+                      .where((u) =>
+                          u.name.toLowerCase().contains(_searchQuery) ||
+                          u.email.toLowerCase().contains(_searchQuery) ||
+                          u.about.toLowerCase().contains(_searchQuery))
+                      .toList();
+                }
 
-                  if (_searchQuery.isNotEmpty) {
-                    localFiltered = localFiltered
-                        .where((u) =>
-                            u.name.toLowerCase().contains(_searchQuery) ||
-                            u.email.toLowerCase().contains(_searchQuery) ||
-                            u.about.toLowerCase().contains(_searchQuery))
-                        .toList();
-                  }
+                return ValueListenableBuilder<Set<String>>(
+                  valueListenable: ChatSettingsController.pinnedNotifier,
+                  builder: (context, pinnedSet, _) {
+                    // Sort pinned conversations to the top
+                    localFiltered.sort((a, b) {
+                      final bool aPinned = pinnedSet.contains(a.id);
+                      final bool bPinned = pinnedSet.contains(b.id);
+                      if (aPinned && !bPinned) return -1;
+                      if (!aPinned && bPinned) return 1;
+                      return 0;
+                    });
 
-                  return ValueListenableBuilder<Set<String>>(
-                    valueListenable: ChatSettingsController.pinnedNotifier,
-                    builder: (context, pinnedSet, _) {
-                      // Sort pinned conversations to the top
-                      localFiltered.sort((a, b) {
-                        final bool aPinned = pinnedSet.contains(a.id);
-                        final bool bPinned = pinnedSet.contains(b.id);
-                        if (aPinned && !bPinned) return -1;
-                        if (!aPinned && bPinned) return 1;
-                        return 0;
-                      });
-
-                      return _buildScrollableContent(
-                        localFiltered: localFiltered,
-                        totalCount: totalCount,
-                        onlineCount: onlineCount,
-                      );
-                },
-              );
+                    return _buildScrollableContent(
+                      localFiltered: localFiltered,
+                      totalCount: totalCount,
+                      onlineCount: onlineCount,
+                    );
+                  },
+                );
               }
+
+              // Only show progress indicator on initial cold load before data arrives
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
+                ),
+              );
             },
           ),
         ),
@@ -715,14 +716,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             title: 'All',
             count: totalCount,
             isSelected: _selectedFilter == HomeFilter.all,
-            onTap: () => setState(() => _selectedFilter = HomeFilter.all),
+            onTap: () {
+              if (_selectedFilter != HomeFilter.all) {
+                setState(() => _selectedFilter = HomeFilter.all);
+              }
+            },
           ),
           const SizedBox(width: 8),
           _filterChip(
             title: '🟢 Online',
             count: onlineCount,
             isSelected: _selectedFilter == HomeFilter.online,
-            onTap: () => setState(() => _selectedFilter = HomeFilter.online),
+            onTap: () {
+              if (_selectedFilter != HomeFilter.online) {
+                setState(() => _selectedFilter = HomeFilter.online);
+              }
+            },
           ),
         ],
       ),
@@ -735,14 +744,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         AppHaptics.selection();
         onTap();
       },
-      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
@@ -907,7 +916,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ],
                 ),
               ),
-            ...localFiltered.map((user) => ChatUserCard(user: user)),
+            ...localFiltered.map((user) => ChatUserCard(
+                  key: ValueKey('chat_card_${user.id}'),
+                  user: user,
+                )),
           ],
 
           // Global Directory Discovery Section
