@@ -186,44 +186,56 @@ class HomeConversationSkeletonList extends StatelessWidget {
 
             // Conversation Tiles Placeholder
             ...List.generate(6, (index) {
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: context.borderColor, width: 0.8),
-                ),
-                child: Row(
-                  children: [
-                    const SkeletonBox(width: 50, height: 50, borderRadius: 25),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const SkeletonBox(
+                            width: 52, height: 52, borderRadius: 26),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SkeletonBox(
-                                width: (index % 2 == 0) ? 120 : 90,
-                                height: 15,
-                                borderRadius: 6,
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  SkeletonBox(
+                                    width: (index % 2 == 0) ? 120 : 90,
+                                    height: 15,
+                                    borderRadius: 6,
+                                  ),
+                                  const SkeletonBox(
+                                      width: 42, height: 11, borderRadius: 4),
+                                ],
                               ),
-                              const SkeletonBox(width: 42, height: 11, borderRadius: 4),
+                              const SizedBox(height: 7),
+                              SkeletonBox(
+                                width: (index % 3 == 0) ? 180 : 130,
+                                height: 12,
+                                borderRadius: 5,
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          SkeletonBox(
-                            width: (index % 3 == 0) ? 180 : 130,
-                            height: 12,
-                            borderRadius: 5,
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  Divider(
+                    height: 0.8,
+                    thickness: 0.6,
+                    indent: 82,
+                    endIndent: 0,
+                    color: context.isDark
+                        ? const Color(0xFF27272A)
+                        : const Color(0xFFE4E4E8),
+                  ),
+                ],
               );
             }),
           ],

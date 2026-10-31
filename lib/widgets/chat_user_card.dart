@@ -210,13 +210,9 @@ class _ChatUserCardState extends State<ChatUserCard> {
         return false;
       },
       background: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: swipeBgColor,
-          borderRadius: BorderRadius.circular(18),
-        ),
+        color: swipeBgColor,
         child: Row(
           children: [
             Icon(
@@ -238,13 +234,9 @@ class _ChatUserCardState extends State<ChatUserCard> {
         ),
       ),
       secondaryBackground: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         alignment: Alignment.centerRight,
-        decoration: BoxDecoration(
-          color: swipeBgColor,
-          borderRadius: BorderRadius.circular(18),
-        ),
+        color: swipeBgColor,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -266,38 +258,21 @@ class _ChatUserCardState extends State<ChatUserCard> {
           ],
         ),
       ),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        decoration: BoxDecoration(
-          color: isPinned
-              ? (context.isDark
-                  ? const Color(0xFF26262C)
-                  : const Color(0xFFF0F0F4))
-              : (context.isDark
-                  ? const Color(0xFF1C1C20)
-                  : context.surfaceColor),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
             color: isPinned
                 ? (context.isDark
-                    ? const Color(0xFF5A5A64)
-                    : const Color(0xFFC4C4C8))
-                : (context.isDark
-                    ? const Color(0xFF323238)
-                    : context.borderColor),
-            width: isPinned ? 1.5 : 1,
-          ),
-          boxShadow: context.softShadow,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onLongPress: () {
-              AppHaptics.medium();
-              _showChatOptions(isPinned, widget.user);
-            },
-            onTap: () {
+                    ? const Color(0xFF1E1E22)
+                    : const Color(0xFFF4F4F7))
+                : Colors.transparent,
+            child: InkWell(
+              onLongPress: () {
+                AppHaptics.medium();
+                _showChatOptions(isPinned, widget.user);
+              },
+              onTap: () {
               Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -339,67 +314,60 @@ class _ChatUserCardState extends State<ChatUserCard> {
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                          horizontal: 16, vertical: 10),
                       child: Row(
                         children: [
-                          // 50pt Avatar with Knockout Online Dot
+                          // 52pt Lean Avatar with Knockout Online Dot
                           Stack(
                             clipBehavior: Clip.none,
                             children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: context.borderColor, width: 1.5),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(25),
-                                  child: CachedNetworkImage(
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    imageUrl: currentUser.image,
-                                    placeholder: (context, url) => Container(
-                                      width: 50,
-                                      height: 50,
-                                      color: context.surfaceMutedColor,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(26),
+                                child: CachedNetworkImage(
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  imageUrl: currentUser.image,
+                                  placeholder: (context, url) => Container(
+                                    width: 52,
+                                    height: 52,
+                                    color: context.surfaceMutedColor,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: context.isDark
+                                            ? const [
+                                                Color(0xFF2C2C2E),
+                                                Color(0xFF1C1C1E)
+                                              ]
+                                            : const [
+                                                Color(0xFFE4E4E7),
+                                                Color(0xFFF4F4F5)
+                                              ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
                                     ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: LinearGradient(
-                                          colors: context.isDark
-                                              ? const [
-                                                  Color(0xFF2C2C2E),
-                                                  Color(0xFF1C1C1E)
-                                                ]
-                                              : const [
-                                                  Color(0xFFE4E4E7),
-                                                  Color(0xFFF4F4F5)
-                                                ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          currentUser.name.isNotEmpty
-                                              ? currentUser.name[0]
-                                                  .toUpperCase()
-                                              : '?',
-                                          style: TextStyle(
-                                            fontFamily: 'Lexend',
-                                            fontWeight: FontWeight.w700,
-                                            color: context.textPrimaryColor,
-                                            fontSize: 20,
-                                          ),
+                                    child: Center(
+                                      child: Text(
+                                        currentUser.name.isNotEmpty
+                                            ? currentUser.name[0]
+                                                .toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimaryColor,
+                                          fontSize: 20,
                                         ),
                                       ),
                                     ),
@@ -412,16 +380,18 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                   right: 0,
                                   bottom: 0,
                                   child: Container(
-                                    width: 14,
-                                    height: 14,
+                                    width: 13,
+                                    height: 13,
                                     decoration: BoxDecoration(
                                       color: AppTheme.success,
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: isPinned
-                                            ? context.surfaceMutedColor
-                                            : context.surfaceColor,
-                                        width: 2.5,
+                                            ? (context.isDark
+                                                ? const Color(0xFF1E1E22)
+                                                : const Color(0xFFF4F4F7))
+                                            : context.backgroundColor,
+                                        width: 2.2,
                                       ),
                                     ),
                                   ),
@@ -436,32 +406,20 @@ class _ChatUserCardState extends State<ChatUserCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        currentUser.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontFamily: 'Lexend',
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: context.textPrimaryColor,
-                                        ),
-                                      ),
-                                    ),
-                                    if (isPinned) ...[
-                                      const SizedBox(width: 4),
-                                      Icon(
-                                        Icons.push_pin_rounded,
-                                        size: 14,
-                                        color: context.textPrimaryColor,
-                                      ),
-                                    ],
-                                  ],
+                                Text(
+                                  currentUser.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 16,
+                                    fontWeight: isUnread
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                    color: context.textPrimaryColor,
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 StreamBuilder<
                                     DocumentSnapshot<Map<String, dynamic>>>(
                                   stream: _chatMetaStream,
@@ -497,15 +455,13 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontFamily: 'Lexend',
-                                              fontSize: 13,
+                                              fontSize: 13.5,
                                               fontWeight: isUnread
                                                   ? FontWeight.w600
-                                                  : FontWeight.w500,
+                                                  : FontWeight.w400,
                                               color: isUnread
                                                   ? context.textPrimaryColor
-                                                  : (context.isDark
-                                                      ? const Color(0xFFE4E4E7)
-                                                      : const Color(0xFF27272A)),
+                                                  : context.textSecondaryColor,
                                             ),
                                           ),
                                         ),
@@ -517,10 +473,10 @@ class _ChatUserCardState extends State<ChatUserCard> {
                             ),
                           ),
 
-                          // Timestamp & Unread Badge
+                          // Timestamp & Trailing Indicators (Pin / Unread)
                           if (_message != null)
                             Padding(
-                              padding: const EdgeInsets.only(left: 8),
+                              padding: const EdgeInsets.only(left: 10),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 mainAxisSize: MainAxisSize.min,
@@ -531,45 +487,42 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                         time: _message!.sent),
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
-                                      fontSize: 11,
+                                      fontSize: 11.5,
                                       fontWeight: isUnread
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
                                       color: isUnread
                                           ? (context.isDark
                                               ? Colors.white
                                               : Colors.black)
-                                          : (context.isDark
-                                              ? const Color(0xFFD4D4D8)
-                                              : const Color(0xFF52525B)),
+                                          : context.textMutedColor,
                                     ),
                                   ),
-                                  if (isUnread) ...[
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 7, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: context.isDark
-                                            ? Colors.white
-                                            : Colors.black,
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        'NEW',
-                                        style: TextStyle(
-                                          fontFamily: 'Lexend',
-                                          color: context.isDark
-                                              ? Colors.black
-                                              : Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.5,
+                                  const SizedBox(height: 5),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isPinned) ...[
+                                        Icon(
+                                          Icons.push_pin_rounded,
+                                          size: 13,
+                                          color: context.textMutedColor,
                                         ),
-                                      ),
-                                    ),
-                                  ],
+                                        if (isUnread) const SizedBox(width: 5),
+                                      ],
+                                      if (isUnread)
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: context.isDark
+                                                ? Colors.white
+                                                : Colors.black,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -582,6 +535,17 @@ class _ChatUserCardState extends State<ChatUserCard> {
             ),
           ),
         ),
+        // Subtle hairline divider indented 82pt after avatar
+          Divider(
+            height: 0.8,
+            thickness: 0.6,
+            indent: 82,
+            endIndent: 0,
+            color: context.isDark
+                ? const Color(0xFF27272A)
+                : const Color(0xFFE4E4E8),
+          ),
+        ],
       ),
     );
   }

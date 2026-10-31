@@ -1342,131 +1342,121 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Global Directory User Card with direct chat action
   Widget _globalUserCard(ChatUser u) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.borderColor, width: 1),
-        boxShadow: context.softShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: CachedNetworkImage(
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    imageUrl: u.image,
-                    errorWidget: (context, url, error) => CircleAvatar(
-                      radius: 24,
-                      backgroundColor: context.primarySoftColor,
-                      child: Text(
-                        u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimaryColor,
-                          fontSize: 16,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(26),
+                    child: CachedNetworkImage(
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                      imageUrl: u.image,
+                      errorWidget: (context, url, error) => CircleAvatar(
+                        radius: 26,
+                        backgroundColor: context.primarySoftColor,
+                        child: Text(
+                          u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimaryColor,
+                            fontSize: 18,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        u.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: context.textPrimaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        u.email,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                          color: context.textSecondaryColor,
-                        ),
-                      ),
-                      if (u.about.isNotEmpty &&
-                          u.about != "Hey, I'm using Chatty!") ...[
-                        const SizedBox(height: 2),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          u.about,
+                          u.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: 'Lexend',
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic,
-                            color: context.textMutedColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: context.textPrimaryColor,
                           ),
                         ),
+                        const SizedBox(height: 3),
+                        Text(
+                          u.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13.5,
+                            color: context.textSecondaryColor,
+                          ),
+                        ),
+                        if (u.about.isNotEmpty &&
+                            u.about != "Hey, I'm using Chatty!") ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            u.about,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 11.5,
+                              color: context.textMutedColor,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        context.isDark ? Colors.white : Colors.black,
-                    foregroundColor:
-                        context.isDark ? Colors.black : Colors.white,
+                  const SizedBox(width: 8),
+                  Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: context.isDark ? Colors.white : Colors.black,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    elevation: 0,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  icon: const Icon(Icons.chat_bubble_rounded, size: 14),
-                  label: const Text(
-                    'Chat',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    child: Text(
+                      'Chat',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: context.isDark ? Colors.black : Colors.white,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
+        Divider(
+          height: 0.8,
+          thickness: 0.6,
+          indent: 82,
+          endIndent: 0,
+          color: context.isDark
+              ? const Color(0xFF27272A)
+              : const Color(0xFFE4E4E8),
+        ),
+      ],
     );
   }
 }
