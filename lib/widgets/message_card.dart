@@ -520,9 +520,12 @@ class _MessageCardState extends State<MessageCard> {
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12,
+              fontWeight: FontWeight.w500,
               color: isMe
-                  ? Colors.white.withValues(alpha: 0.85)
-                  : context.textSecondaryColor,
+                  ? Colors.white.withValues(alpha: 0.95)
+                  : (context.isDark
+                      ? const Color(0xFFD4D4D8)
+                      : const Color(0xFF3F3F46)),
             ),
           ),
         ],
@@ -723,7 +726,10 @@ class _MessageCardState extends State<MessageCard> {
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 10,
-                              color: context.textMutedColor,
+                              fontWeight: FontWeight.w500,
+                              color: context.isDark
+                                  ? const Color(0xFFA1A1AA)
+                                  : const Color(0xFF71717A),
                             ),
                           ),
                         ),
@@ -926,7 +932,7 @@ class _MessageCardState extends State<MessageCard> {
                                                     Icons.done_rounded,
                                                     key: const ValueKey('sent'),
                                                     color: Colors.white
-                                                        .withValues(alpha: 0.7),
+                                                        .withValues(alpha: 0.9),
                                                     size: 13,
                                                   ),
                                           ),
@@ -949,10 +955,11 @@ class _MessageCardState extends State<MessageCard> {
                               Text(
                                 MyDateUtil.getFormattedTime(
                                     context: context, time: widget.message.sent),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 10,
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -971,7 +978,7 @@ class _MessageCardState extends State<MessageCard> {
                                         Icons.done_rounded,
                                         key: const ValueKey('sent'),
                                         color:
-                                            Colors.white.withValues(alpha: 0.75),
+                                            Colors.white.withValues(alpha: 0.9),
                                         size: 14,
                                       ),
                               ),

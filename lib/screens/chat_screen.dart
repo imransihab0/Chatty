@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -275,13 +274,18 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
               color: context.isDark
-                  ? const Color(0xE61E1E1E)
-                  : const Color(0xE6EEEEF0),
+                  ? const Color(0xFF1E1E20)
+                  : const Color(0xFFE4E4E7),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.borderColor, width: 0.8),
+              border: Border.all(
+                color: context.isDark
+                    ? const Color(0xFF2C2C2E)
+                    : const Color(0xFFD4D4D8),
+                width: 0.8,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.35 : 0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -293,7 +297,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 fontFamily: 'Lexend',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: context.textSecondaryColor,
+                color: context.isDark
+                    ? const Color(0xFFE4E4E7)
+                    : const Color(0xFF18181B),
                 letterSpacing: 0.4,
               ),
             ),
@@ -766,7 +772,7 @@ class _ChatScreenState extends State<ChatScreen> {
 );
 }
 
-  // Telegram-style Frosted Glass Floating Date Header
+  // Crisp Solid Date Separator Header (Zero blur distortion on iOS Impeller)
   Widget _buildDateHeader(String timeMillis) {
     final label = MyDateUtil.getChatDateHeader(timeMillis);
     if (label.isEmpty) return const SizedBox.shrink();
@@ -774,42 +780,36 @@ class _ChatScreenState extends State<ChatScreen> {
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 10),
-        child: ClipRRect(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: context.isDark
+              ? const Color(0xFF1E1E20)
+              : const Color(0xFFE4E4E7),
           borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: context.isDark
-                    ? Colors.black.withValues(alpha: 0.45)
-                    : Colors.white.withValues(alpha: 0.70),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: context.isDark
-                      ? Colors.white.withValues(alpha: 0.12)
-                      : Colors.black.withValues(alpha: 0.08),
-                  width: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: context.isDark ? 0.3 : 0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                  color: context.textPrimaryColor,
-                ),
-              ),
+          border: Border.all(
+            color: context.isDark
+                ? const Color(0xFF2C2C2E)
+                : const Color(0xFFD4D4D8),
+            width: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: context.isDark ? 0.3 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
+            color: context.isDark
+                ? const Color(0xFFE4E4E7)
+                : const Color(0xFF18181B),
           ),
         ),
       ),
@@ -938,12 +938,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                   style: TextStyle(
                                     fontFamily: 'Lexend',
                                     fontSize: 11,
-                                    fontWeight: currentUser.isOnline
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
+                                    fontWeight: FontWeight.w500,
                                     color: currentUser.isOnline
                                         ? AppTheme.success
-                                        : context.textMutedColor,
+                                        : (context.isDark
+                                            ? const Color(0xFFA1A1AA)
+                                            : const Color(0xFF71717A)),
                                   ),
                                 );
                               },
@@ -962,13 +962,13 @@ class _ChatScreenState extends State<ChatScreen> {
               onPressed: () => setState(() => _isSearching = true),
               icon: Icon(
                 Icons.search_rounded,
-                color: context.textSecondaryColor,
+                color: context.textPrimaryColor,
               ),
             ),
             PopupMenuButton<String>(
               icon: Icon(
                 Icons.more_vert_rounded,
-                color: context.textSecondaryColor,
+                color: context.textPrimaryColor,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),

@@ -24,21 +24,21 @@ class AppTheme {
   static const Color borderLight = Color(0xFFF4F4F5);
 
   static const Color textPrimary = Color(0xFF09090B); // Pure Crisp Black
-  static const Color textSecondary = Color(0xFF52525B); // Neutral Mid Grey
-  static const Color textMuted = Color(0xFF71717A); // Neutral Mid Grey (4.74:1 on Surface - PASS WCAG AA)
+  static const Color textSecondary = Color(0xFF3F3F46); // Zinc-700: High-contrast sharp charcoal (NEVER faded)
+  static const Color textMuted = Color(0xFF52525B); // Zinc-600: High-contrast legible grey
   static const Color textWhite = Color(0xFFFFFFFF);
 
   // Dark Mode Colors (Pure Black & White Monochrome - Zero Blue)
   static const Color darkBackground = Color(0xFF000000); // Pure OLED Black
-  static const Color darkSurface = Color(0xFF121212); // Pure Neutral Dark Charcoal
-  static const Color darkSurfaceMuted = Color(0xFF1E1E1E); // Pure Neutral Muted Charcoal
-  static const Color darkBorder = Color(0xFF2C2C2C); // Pure Neutral Dark Border
-  static const Color darkBorderLight = Color(0xFF1C1C1C);
+  static const Color darkSurface = Color(0xFF141416); // Pure Neutral Dark Charcoal
+  static const Color darkSurfaceMuted = Color(0xFF1E1E20); // Pure Neutral Muted Charcoal
+  static const Color darkBorder = Color(0xFF2C2C2E); // Pure Neutral Dark Border
+  static const Color darkBorderLight = Color(0xFF1C1C1E);
 
   static const Color darkTextPrimary = Color(0xFFFFFFFF); // Crisp Pure White
-  static const Color darkTextSecondary = Color(0xFFA3A3A3); // Crisp Neutral Grey
-  static const Color darkTextMuted = Color(0xFF8E8E93); // Crisp Neutral Grey (5.21:1 on Dark Surface - PASS WCAG AA)
-  static const Color darkPrimarySoft = Color(0xFF262626); // Neutral Charcoal Accent
+  static const Color darkTextSecondary = Color(0xFFD4D4D8); // Zinc-300: High-contrast crisp silver-white (NEVER faded)
+  static const Color darkTextMuted = Color(0xFFA1A1AA); // Zinc-400: High-contrast crisp grey
+  static const Color darkPrimarySoft = Color(0xFF262628); // Neutral Charcoal Accent
   static const Color darkPrimary = Color(0xFFFFFFFF); // Crisp Pure White Accent
   static const Color darkOnPrimary = Color(0xFF000000); // Pure Black on White
 

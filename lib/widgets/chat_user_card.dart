@@ -73,7 +73,11 @@ class _ChatUserCardState extends State<ChatUserCard> {
       child: Icon(
         isRead ? Icons.done_all_rounded : Icons.done_rounded,
         size: 15,
-        color: isRead ? AppTheme.success : context.textMutedColor,
+        color: isRead
+            ? AppTheme.success
+            : (context.isDark
+                ? const Color(0xFFA1A1AA)
+                : const Color(0xFF71717A)),
       ),
     );
   }
@@ -265,14 +269,22 @@ class _ChatUserCardState extends State<ChatUserCard> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         decoration: BoxDecoration(
-          color: isPinned ? context.surfaceMutedColor : context.surfaceColor,
+          color: isPinned
+              ? (context.isDark
+                  ? const Color(0xFF222226)
+                  : const Color(0xFFF2F2F5))
+              : (context.isDark
+                  ? const Color(0xFF161618)
+                  : context.surfaceColor),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isPinned
                 ? (context.isDark
-                    ? const Color(0xFF444444)
-                    : const Color(0xFFD4D4D8))
-                : context.borderColor,
+                    ? const Color(0xFF55555A)
+                    : const Color(0xFFC4C4C8))
+                : (context.isDark
+                    ? const Color(0xFF262628)
+                    : context.borderColor),
             width: isPinned ? 1.5 : 1,
           ),
           boxShadow: context.softShadow,
@@ -488,10 +500,12 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                               fontSize: 13,
                                               fontWeight: isUnread
                                                   ? FontWeight.w600
-                                                  : FontWeight.w400,
+                                                  : FontWeight.w500,
                                               color: isUnread
                                                   ? context.textPrimaryColor
-                                                  : context.textSecondaryColor,
+                                                  : (context.isDark
+                                                      ? const Color(0xFFD4D4D8)
+                                                      : const Color(0xFF3F3F46)),
                                             ),
                                           ),
                                         ),
@@ -519,13 +533,15 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                       fontFamily: 'Lexend',
                                       fontSize: 11,
                                       fontWeight: isUnread
-                                          ? FontWeight.w600
-                                          : FontWeight.w400,
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
                                       color: isUnread
                                           ? (context.isDark
                                               ? Colors.white
                                               : Colors.black)
-                                          : context.textSecondaryColor,
+                                          : (context.isDark
+                                              ? const Color(0xFFA1A1AA)
+                                              : const Color(0xFF71717A)),
                                     ),
                                   ),
                                   if (isUnread) ...[

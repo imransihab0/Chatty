@@ -188,11 +188,11 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
     final activeBarColor =
         widget.isMe ? Colors.white : context.textPrimaryColor;
     final inactiveBarColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.3)
-        : context.borderColor;
+        ? Colors.white.withValues(alpha: 0.45)
+        : (context.isDark ? const Color(0xFF48484A) : const Color(0xFFD4D4D8));
     final textColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.8)
-        : context.textSecondaryColor;
+        ? Colors.white
+        : (context.isDark ? const Color(0xFFD4D4D8) : const Color(0xFF3F3F46));
 
     // Show remaining time during playback, total duration when stopped
     final Duration displayDuration = _player.playing
