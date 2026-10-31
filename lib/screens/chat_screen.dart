@@ -180,80 +180,80 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildScrollToBottomButton() {
-    return IgnorePointer(
-      ignoring: !_showScrollToBottom,
-      child: AnimatedPositioned(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        bottom: _showScrollToBottom ? 16 : -60,
-        right: 16,
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      bottom: _showScrollToBottom ? 16 : -60,
+      right: 16,
+      child: IgnorePointer(
+        ignoring: !_showScrollToBottom,
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 180),
           opacity: _showScrollToBottom ? 1.0 : 0.0,
           child: GestureDetector(
-          onTap: () {
-            AppHaptics.light();
-            setState(() => _newMessagesWhileScrolled = 0);
-            _scrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutCubic,
-            );
-          },
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: context.borderColor, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.16),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            onTap: () {
+              AppHaptics.light();
+              setState(() => _newMessagesWhileScrolled = 0);
+              _scrollController.animateTo(
+                0,
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+              );
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: context.surfaceColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: context.borderColor, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.16),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: context.textPrimaryColor,
+                    size: 26,
+                  ),
                 ),
-                child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: context.textPrimaryColor,
-                  size: 26,
-                ),
-              ),
-              if (_newMessagesWhileScrolled > 0)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.danger,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: context.surfaceColor, width: 2),
-                    ),
-                    child: Text(
-                      '$_newMessagesWhileScrolled',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                if (_newMessagesWhileScrolled > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.danger,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: context.surfaceColor, width: 2),
+                      ),
+                      child: Text(
+                        '$_newMessagesWhileScrolled',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildStickyDateHeader() {
     if (_floatingDateText == null || _floatingDateText!.isEmpty) {
@@ -266,7 +266,9 @@ class _ChatScreenState extends State<ChatScreen> {
       top: _showFloatingDate ? 10 : -45,
       left: 0,
       right: 0,
-      child: AnimatedOpacity(
+      child: IgnorePointer(
+        ignoring: !_showFloatingDate,
+        child: AnimatedOpacity(
         duration: const Duration(milliseconds: 180),
         opacity: _showFloatingDate ? 1.0 : 0.0,
         child: Center(
@@ -306,7 +308,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSearchStepperBar() {
