@@ -9,7 +9,6 @@ import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
-import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/widgets/typing_wave_dots.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +29,10 @@ class ChatUserCard extends StatefulWidget {
   State<ChatUserCard> createState() => _ChatUserCardState();
 }
 
-class _ChatUserCardState extends State<ChatUserCard> {
+class _ChatUserCardState extends State<ChatUserCard>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   Message? _message;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _userInfoStream;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _lastMessageStream;
@@ -54,6 +56,34 @@ class _ChatUserCardState extends State<ChatUserCard> {
     if (oldWidget.user.id != widget.user.id) {
       _initStreams();
     }
+  }
+
+  Widget _buildAvatarFallback(ChatUser user) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: context.isDark
+              ? const [Color(0xFF2C2C2E), Color(0xFF1C1C1E)]
+              : const [Color(0xFFE4E4E7), Color(0xFFF4F4F5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w700,
+            color: context.textPrimaryColor,
+            fontSize: 20,
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatVoiceDuration(int durationMs) {
@@ -179,6 +209,7 @@ class _ChatUserCardState extends State<ChatUserCard> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final bool isPinned = ChatSettingsController.isPinned(widget.user.id);
     final swipeBgColor = context.isDark
         ? const Color(0xFF262626)
@@ -299,13 +330,6 @@ class _ChatUserCardState extends State<ChatUserCard> {
                         [];
                     if (list.isNotEmpty) {
                       _message = list[0];
-                      final sentTime = int.tryParse(_message!.sent) ?? 0;
-                      if (sentTime > 0) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          ConversationController.updateLastMessage(
-                              widget.user.id, _message!);
-                        });
-                      }
                     }
 
                     final bool isUnread = _message != null &&
@@ -328,50 +352,16 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                   height: 52,
                                   fit: BoxFit.cover,
                                   imageUrl: currentUser.image,
-                                  placeholder: (context, url) => Container(
-                                    width: 52,
-                                    height: 52,
-                                    color: context.surfaceMutedColor,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    ),
-                                  ),
+                                  memCacheWidth: 104,
+                                  memCacheHeight: 104,
+                                  fadeInDuration:
+                                      const Duration(milliseconds: 100),
+                                  fadeOutDuration:
+                                      const Duration(milliseconds: 50),
+                                  placeholder: (context, url) =>
+                                      _buildAvatarFallback(currentUser),
                                   errorWidget: (context, url, error) =>
-                                      Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: context.isDark
-                                            ? const [
-                                                Color(0xFF2C2C2E),
-                                                Color(0xFF1C1C1E)
-                                              ]
-                                            : const [
-                                                Color(0xFFE4E4E7),
-                                                Color(0xFFF4F4F5)
-                                              ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        currentUser.name.isNotEmpty
-                                            ? currentUser.name[0]
-                                                .toUpperCase()
-                                            : '?',
-                                        style: TextStyle(
-                                          fontFamily: 'Lexend',
-                                          fontWeight: FontWeight.w700,
-                                          color: context.textPrimaryColor,
-                                          fontSize: 20,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                      _buildAvatarFallback(currentUser),
                                 ),
                               ),
                               // Knockout online indicator badge

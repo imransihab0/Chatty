@@ -507,6 +507,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   height: 32,
                   fit: BoxFit.cover,
                   imageUrl: APIs.me.image,
+                  memCacheWidth: 64,
+                  memCacheHeight: 64,
                   errorWidget: (context, url, error) => CircleAvatar(
                     radius: 16,
                     backgroundColor: context.primarySoftColor,
@@ -723,6 +725,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     height: 48,
                                     fit: BoxFit.cover,
                                     imageUrl: user.image,
+                                    memCacheWidth: 96,
+                                    memCacheHeight: 96,
+                                    fadeInDuration:
+                                        const Duration(milliseconds: 100),
+                                    placeholder: (context, url) => CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: context.primarySoftColor,
+                                      child: Text(
+                                        user.name.isNotEmpty
+                                            ? user.name[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimaryColor,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
                                     errorWidget: (context, url, error) =>
                                         CircleAvatar(
                                       radius: 24,
@@ -983,6 +1004,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final bool hasGlobal = _globalSearchResults.isNotEmpty;
 
     return ListView(
+      addAutomaticKeepAlives: true,
+      addRepaintBoundaries: true,
       padding: EdgeInsets.only(
         top: 4,
         bottom: 96 + MediaQuery.paddingOf(context).bottom,
@@ -1365,6 +1388,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       height: 52,
                       fit: BoxFit.cover,
                       imageUrl: u.image,
+                      memCacheWidth: 104,
+                      memCacheHeight: 104,
+                      fadeInDuration: const Duration(milliseconds: 100),
+                      placeholder: (context, url) => CircleAvatar(
+                        radius: 26,
+                        backgroundColor: context.primarySoftColor,
+                        child: Text(
+                          u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimaryColor,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
                       errorWidget: (context, url, error) => CircleAvatar(
                         radius: 26,
                         backgroundColor: context.primarySoftColor,
