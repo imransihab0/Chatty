@@ -4,10 +4,13 @@ import 'package:chatty/helper/app_haptics.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Controller for managing pinned conversations and chat preferences
+/// Controller for managing pinned conversations, chat preferences, and wallpaper themes
 class ChatSettingsController {
   static final ValueNotifier<Set<String>> pinnedNotifier =
       ValueNotifier<Set<String>>({});
+
+  static final ValueNotifier<String> wallpaperThemeNotifier =
+      ValueNotifier<String>('doodle');
 
   static const String _fileName = 'chat_preferences.json';
 
@@ -21,6 +24,10 @@ class ChatSettingsController {
         final List<dynamic>? list = map['pinned_users'];
         if (list != null) {
           pinnedNotifier.value = list.map((e) => e.toString()).toSet();
+        }
+        final String? wallpaper = map['wallpaper_theme'];
+        if (wallpaper != null) {
+          wallpaperThemeNotifier.value = wallpaper;
         }
       }
     } catch (_) {}
@@ -39,11 +46,23 @@ class ChatSettingsController {
       updated.add(userId);
     }
     pinnedNotifier.value = updated;
+    await _save();
+  }
 
+  static Future<void> setWallpaperTheme(String theme) async {
+    AppHaptics.selection();
+    wallpaperThemeNotifier.value = theme;
+    await _save();
+  }
+
+  static Future<void> _save() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_fileName');
-      final map = {'pinned_users': updated.toList()};
+      final map = {
+        'pinned_users': pinnedNotifier.value.toList(),
+        'wallpaper_theme': wallpaperThemeNotifier.value,
+      };
       await file.writeAsString(jsonEncode(map));
     } catch (_) {}
   }

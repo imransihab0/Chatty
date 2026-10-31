@@ -45,6 +45,10 @@ class VoiceRecorderService {
       final hasPermission = await requestPermission();
       if (!hasPermission) return false;
 
+      if (_recording) {
+        await cancelRecording();
+      }
+
       final dir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       _currentPath = '${dir.path}/voice_note_$timestamp.m4a';
@@ -77,15 +81,51 @@ class VoiceRecorderService {
     }
   }
 
+  /// Pause current recording session.
+  Future<void> pauseRecording() async {
+    if (!_recording) return;
+    try {
+      _amplitudeTimer?.cancel();
+      await _recorder.pause();
+      log('VoiceRecorder: recording paused');
+    } catch (e) {
+      log('VoiceRecorder: pause error: $e');
+    }
+  }
+
+  /// Resume paused recording session.
+  Future<void> resumeRecording() async {
+    if (!_recording) return;
+    try {
+      await _recorder.resume();
+      _amplitudeTimer?.cancel();
+      _amplitudeTimer = Timer.periodic(
+        const Duration(milliseconds: 33),
+        (_) => _pollAmplitude(),
+      );
+      log('VoiceRecorder: recording resumed');
+    } catch (e) {
+      log('VoiceRecorder: resume error: $e');
+    }
+  }
+
+  /// Check whether recorder is currently paused.
+  Future<bool> isPaused() async {
+    try {
+      return await _recorder.isPaused();
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _pollAmplitude() async {
     if (!_recording) return;
     try {
       final amp = await _recorder.getAmplitude();
       // amp.current is in dBFS (negative, typically -60 to 0)
-      // Normalize to 0.0–1.0
       final double dbfs = amp.current;
-      // Clamp and normalize: -50 dB → 0.0, 0 dB → 1.0
-      final double normalized = ((dbfs + 50) / 50).clamp(0.0, 1.0);
+      // Smooth logarithmic clamp: -50 dB → 0.0, 0 dB → 1.0
+      final double normalized = ((dbfs + 50) / 50).clamp(0.05, 1.0);
       _amplitudeController.add(normalized);
     } catch (_) {}
   }

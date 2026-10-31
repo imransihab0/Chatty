@@ -33,25 +33,25 @@ class _ShimmerSkeletonState extends State<ShimmerSkeleton>
   @override
   Widget build(BuildContext context) {
     final bool isDark = context.isDark;
-    final baseColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE4E4E7);
-    final highlightColor =
-        isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF4F4F5);
+    final highlight = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.45);
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         return ShaderMask(
-          blendMode: BlendMode.srcATop,
+          blendMode: BlendMode.srcOver,
           shaderCallback: (bounds) {
             return LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                baseColor,
-                highlightColor,
-                baseColor,
+                Colors.transparent,
+                highlight,
+                Colors.transparent,
               ],
-              stops: const [0.0, 0.5, 1.0],
+              stops: const [0.35, 0.50, 0.65],
               transform: _SlidingGradientTransform(slidePercent: _controller.value),
             ).createShader(bounds);
           },
@@ -101,58 +101,133 @@ class SkeletonBox extends StatelessWidget {
   }
 }
 
-/// Shimmer list placeholder for the Home conversation screen
+/// Shimmer list placeholder for the Home conversation screen with zero layout shift
 class HomeConversationSkeletonList extends StatelessWidget {
   const HomeConversationSkeletonList({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ShimmerSkeleton(
-      child: ListView.builder(
-        itemCount: 8,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        itemBuilder: (context, index) {
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: context.borderColor),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Search Pill Placeholder
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.surfaceMutedColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.borderColor, width: 0.8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: const Row(
+                  children: [
+                    SkeletonBox(
+                      width: 18,
+                      height: 18,
+                      borderRadius: 9,
+                    ),
+                    SizedBox(width: 12),
+                    SkeletonBox(
+                      width: 130,
+                      height: 14,
+                      borderRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Row(
-              children: [
-                const SkeletonBox(width: 50, height: 50, borderRadius: 25),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+            // Active Friends Tray Carousel Placeholder
+            Container(
+              margin: const EdgeInsets.only(top: 6, bottom: 8),
+              height: 104,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 5,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemBuilder: (context, index) {
+                  return const Padding(
+                    padding: EdgeInsets.only(right: 14),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SkeletonBox(width: 56, height: 56, borderRadius: 28),
+                        SizedBox(height: 8),
+                        SkeletonBox(width: 48, height: 11, borderRadius: 4),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // Filter Chips Bar Placeholder
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  SkeletonBox(width: 58, height: 34, borderRadius: 17),
+                  SizedBox(width: 8),
+                  SkeletonBox(width: 82, height: 34, borderRadius: 17),
+                  SizedBox(width: 8),
+                  SkeletonBox(width: 78, height: 34, borderRadius: 17),
+                  SizedBox(width: 8),
+                  SkeletonBox(width: 74, height: 34, borderRadius: 17),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Conversation Tiles Placeholder
+            ...List.generate(6, (index) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: context.surfaceColor,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: context.borderColor, width: 0.8),
+                ),
+                child: Row(
+                  children: [
+                    const SkeletonBox(width: 50, height: 50, borderRadius: 25),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SkeletonBox(
-                            width: (index % 2 == 0) ? 120 : 90,
-                            height: 15,
-                            borderRadius: 6,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              SkeletonBox(
+                                width: (index % 2 == 0) ? 120 : 90,
+                                height: 15,
+                                borderRadius: 6,
+                              ),
+                              const SkeletonBox(width: 42, height: 11, borderRadius: 4),
+                            ],
                           ),
-                          const SkeletonBox(width: 40, height: 11, borderRadius: 4),
+                          const SizedBox(height: 8),
+                          SkeletonBox(
+                            width: (index % 3 == 0) ? 180 : 130,
+                            height: 12,
+                            borderRadius: 5,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      SkeletonBox(
-                        width: (index % 3 == 0) ? 180 : 140,
-                        height: 12,
-                        borderRadius: 5,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
+              );
+            }),
+          ],
+        ),
       ),
     );
   }

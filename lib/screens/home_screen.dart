@@ -5,6 +5,7 @@ import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/models/chat_user.dart';
+import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
@@ -15,7 +16,7 @@ import 'package:chatty/widgets/shimmer_skeleton.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-enum HomeFilter { all, online }
+enum HomeFilter { all, unread, online, media }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -121,6 +122,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _lookupAndOpenUser(String targetEmail) async {
+    final trimmed = targetEmail.trim();
+    if (trimmed.isEmpty) return;
+    if (trimmed.toLowerCase() == APIs.user.email?.toLowerCase()) {
+      Dialogs.showSnackbar(context, 'You cannot chat with yourself!');
+      return;
+    }
+
+    final userSnapshot = await APIs.firestore
+        .collection('users')
+        .where('email', isEqualTo: trimmed)
+        .get();
+    if (!mounted) return;
+    if (userSnapshot.docs.isNotEmpty) {
+      final chatUser = ChatUser.fromJson(userSnapshot.docs.first.data());
+      Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ChatScreen(user: chatUser)));
+    } else {
+      Dialogs.showSnackbar(context, 'User not found!');
+    }
+  }
+
   void _addChatUserDialog() {
     String email = '';
 
@@ -128,9 +152,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: context.surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding:
             const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: context.borderColor, width: 0.8),
+        ),
         title: Row(
           children: [
             Icon(Icons.person_add_rounded, color: context.textPrimaryColor, size: 26),
@@ -146,48 +173,57 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Enter your friend\'s email to start a conversation:',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 13,
-                color: context.textSecondaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              maxLines: 1,
-              keyboardType: TextInputType.emailAddress,
-              onChanged: (value) => email = value.trim(),
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                color: context.textPrimaryColor,
-              ),
-              decoration: InputDecoration(
-                hintText: 'name@example.com',
-                hintStyle: TextStyle(
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter your friend\'s email to start a conversation:',
+                style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: context.textMutedColor,
-                  fontSize: 14,
-                ),
-                prefixIcon: Icon(Icons.email_outlined,
-                    color: context.textSecondaryColor, size: 20),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                filled: true,
-                fillColor: context.surfaceMutedColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+                  fontSize: 13,
+                  color: context.textSecondaryColor,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextFormField(
+                maxLines: 1,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.email],
+                onChanged: (value) => email = value.trim(),
+                onFieldSubmitted: (val) {
+                  Navigator.pop(context);
+                  _lookupAndOpenUser(val);
+                },
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: context.textPrimaryColor,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'name@example.com',
+                  hintStyle: TextStyle(
+                    fontFamily: 'Lexend',
+                    color: context.textMutedColor,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(Icons.email_outlined,
+                      color: context.textSecondaryColor, size: 20),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  filled: true,
+                  fillColor: context.surfaceMutedColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -210,30 +246,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
-            onPressed: () async {
+            onPressed: () {
               Navigator.pop(context);
-              if (email.isEmpty) return;
-              if (email.toLowerCase() == APIs.user.email?.toLowerCase()) {
-                Dialogs.showSnackbar(context, 'You cannot chat with yourself!');
-                return;
-              }
-
-              final userSnapshot = await APIs.firestore
-                  .collection('users')
-                  .where('email', isEqualTo: email)
-                  .get();
-              if (userSnapshot.docs.isNotEmpty) {
-                final chatUser =
-                    ChatUser.fromJson(userSnapshot.docs.first.data());
-                if (!mounted) return;
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => ChatScreen(user: chatUser)));
-              } else {
-                if (!mounted) return;
-                Dialogs.showSnackbar(context, 'User not found!');
-              }
+              _lookupAndOpenUser(email);
             },
             child: const Text(
               'Chat',
@@ -296,70 +311,91 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 // Start observing latest messages across all users in background
                 ConversationController.watchUsers(_list);
 
-                final onlineCount =
-                    _list.where((u) => u.isOnline).length;
-                final totalCount = _list.length;
+                return ValueListenableBuilder<Map<String, Message>>(
+                  valueListenable: ConversationController.lastMessagesNotifier,
+                  builder: (context, lastMessagesMap, _) {
+                    final onlineCount =
+                        _list.where((u) => u.isOnline).length;
+                    final unreadCount = _list
+                        .where((u) => ConversationController.isUnread(u.id))
+                        .length;
+                    final mediaCount = _list
+                        .where((u) => ConversationController.hasMedia(u.id))
+                        .length;
+                    final totalCount = _list.length;
 
-                // Apply filter & search query
-                List<ChatUser> localFiltered = List.from(_list);
+                    // Apply filter & search query
+                    List<ChatUser> localFiltered = List.from(_list);
 
-                if (_selectedFilter == HomeFilter.online) {
-                  localFiltered =
-                      localFiltered.where((u) => u.isOnline).toList();
-                }
+                    if (_selectedFilter == HomeFilter.unread) {
+                      localFiltered = localFiltered
+                          .where((u) => ConversationController.isUnread(u.id))
+                          .toList();
+                    } else if (_selectedFilter == HomeFilter.online) {
+                      localFiltered =
+                          localFiltered.where((u) => u.isOnline).toList();
+                    } else if (_selectedFilter == HomeFilter.media) {
+                      localFiltered = localFiltered
+                          .where((u) => ConversationController.hasMedia(u.id))
+                          .toList();
+                    }
 
-                if (_searchQuery.isNotEmpty) {
-                  localFiltered = localFiltered
-                      .where((u) =>
-                          u.name.toLowerCase().contains(_searchQuery) ||
-                          u.email.toLowerCase().contains(_searchQuery) ||
-                          u.about.toLowerCase().contains(_searchQuery))
-                      .toList();
-                }
+                    if (_searchQuery.isNotEmpty) {
+                      localFiltered = localFiltered
+                          .where((u) =>
+                              u.name.toLowerCase().contains(_searchQuery) ||
+                              u.email.toLowerCase().contains(_searchQuery) ||
+                              u.about.toLowerCase().contains(_searchQuery))
+                          .toList();
+                    }
 
-                return ValueListenableBuilder<Set<String>>(
-                  valueListenable: ChatSettingsController.pinnedNotifier,
-                  builder: (context, pinnedSet, _) {
-                    return ValueListenableBuilder<Map<String, int>>(
-                      valueListenable:
-                          ConversationController.lastMessageTimesNotifier,
-                      builder: (context, messageTimes, _) {
-                        // Sort conversations:
-                        // 1. Pinned conversations to the top
-                        // 2. Latest chat timestamp descending (most recent chat on top)
-                        // 3. Fallback to lastActive descending, then alphabetical by name
-                        localFiltered.sort((a, b) {
-                          final bool aPinned = pinnedSet.contains(a.id);
-                          final bool bPinned = pinnedSet.contains(b.id);
-                          if (aPinned && !bPinned) return -1;
-                          if (!aPinned && bPinned) return 1;
+                    return ValueListenableBuilder<Set<String>>(
+                      valueListenable: ChatSettingsController.pinnedNotifier,
+                      builder: (context, pinnedSet, _) {
+                        return ValueListenableBuilder<Map<String, int>>(
+                          valueListenable:
+                              ConversationController.lastMessageTimesNotifier,
+                          builder: (context, messageTimes, _) {
+                            // Sort conversations:
+                            // 1. Pinned conversations to the top
+                            // 2. Latest chat timestamp descending (most recent chat on top)
+                            // 3. Fallback to lastActive descending, then alphabetical by name
+                            localFiltered.sort((a, b) {
+                              final bool aPinned = pinnedSet.contains(a.id);
+                              final bool bPinned = pinnedSet.contains(b.id);
+                              if (aPinned && !bPinned) return -1;
+                              if (!aPinned && bPinned) return 1;
 
-                          final int timeA = messageTimes[a.id] ?? 0;
-                          final int timeB = messageTimes[b.id] ?? 0;
+                              final int timeA = messageTimes[a.id] ?? 0;
+                              final int timeB = messageTimes[b.id] ?? 0;
 
-                          if (timeA > 0 || timeB > 0) {
-                            if (timeA != timeB) {
-                              return timeB.compareTo(timeA); // latest chat on top
-                            }
-                          }
+                              if (timeA > 0 || timeB > 0) {
+                                if (timeA != timeB) {
+                                  return timeB.compareTo(timeA); // latest chat on top
+                                }
+                              }
 
-                          final int activeA =
-                              int.tryParse(a.lastActive) ?? 0;
-                          final int activeB =
-                              int.tryParse(b.lastActive) ?? 0;
-                          if (activeA != activeB) {
-                            return activeB.compareTo(activeA);
-                          }
+                              final int activeA =
+                                  int.tryParse(a.lastActive) ?? 0;
+                              final int activeB =
+                                  int.tryParse(b.lastActive) ?? 0;
+                              if (activeA != activeB) {
+                                return activeB.compareTo(activeA);
+                              }
 
-                          return a.name
-                              .toLowerCase()
-                              .compareTo(b.name.toLowerCase());
-                        });
+                              return a.name
+                                  .toLowerCase()
+                                  .compareTo(b.name.toLowerCase());
+                            });
 
-                        return _buildScrollableContent(
-                          localFiltered: localFiltered,
-                          totalCount: totalCount,
-                          onlineCount: onlineCount,
+                            return _buildScrollableContent(
+                              localFiltered: localFiltered,
+                              totalCount: totalCount,
+                              unreadCount: unreadCount,
+                              onlineCount: onlineCount,
+                              mediaCount: mediaCount,
+                            );
+                          },
                         );
                       },
                     );
@@ -420,12 +456,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             AppHaptics.medium();
             ThemeController.toggleTheme();
           },
-          icon: Icon(
-            context.isDark
-                ? Icons.light_mode_rounded
-                : Icons.dark_mode_rounded,
-            color: context.textPrimaryColor,
-            size: 22,
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, anim) => RotationTransition(
+              turns: anim,
+              child: ScaleTransition(scale: anim, child: child),
+            ),
+            child: Icon(
+              context.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
+              key: ValueKey(context.isDark),
+              color: context.textPrimaryColor,
+              size: 22,
+            ),
           ),
         ),
         IconButton(
@@ -613,6 +657,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           SizedBox(
             height: 96,
             child: ListView.builder(
+              key: const PageStorageKey('active_now_horizontal_tray'),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -645,46 +690,53 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 gradient: user.isOnline
                                     ? const LinearGradient(
                                         colors: [
-                                          Color(0xFF10B981),
-                                          Color(0xFF34D399)
+                                          AppTheme.success,
+                                          Color(0xFF16A34A),
                                         ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       )
                                     : LinearGradient(
                                         colors: context.isDark
-                                            ? [
-                                                const Color(0xFF333333),
-                                                const Color(0xFF222222)
+                                            ? const [
+                                                Color(0xFF2C2C2C),
+                                                Color(0xFF1C1C1C)
                                               ]
-                                            : [
-                                                const Color(0xFFD4D4D8),
-                                                const Color(0xFFE4E4E7)
+                                            : const [
+                                                Color(0xFFE4E4E7),
+                                                Color(0xFFF4F4F5)
                                               ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(24),
-                                child: CachedNetworkImage(
-                                  width: 48,
-                                  height: 48,
-                                  fit: BoxFit.cover,
-                                  imageUrl: user.image,
-                                  errorWidget: (context, url, error) =>
-                                      CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: context.primarySoftColor,
-                                    child: Text(
-                                      user.name.isNotEmpty
-                                          ? user.name[0].toUpperCase()
-                                          : '?',
-                                      style: TextStyle(
-                                        fontFamily: 'Lexend',
-                                        fontWeight: FontWeight.w700,
-                                        color: context.textPrimaryColor,
-                                        fontSize: 16,
+                              child: Container(
+                                padding: const EdgeInsets.all(2.0),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: context.backgroundColor,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: CachedNetworkImage(
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                    imageUrl: user.image,
+                                    errorWidget: (context, url, error) =>
+                                        CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: context.primarySoftColor,
+                                      child: Text(
+                                        user.name.isNotEmpty
+                                            ? user.name[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w700,
+                                          color: context.textPrimaryColor,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -702,7 +754,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     color: AppTheme.success,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                        color: context.surfaceColor,
+                                        color: context.backgroundColor,
                                         width: 2.5),
                                   ),
                                 ),
@@ -734,9 +786,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // Filter Chips Row
-  Widget _filterChipsBar(int totalCount, int onlineCount) {
+  // Filter Chips Row (Chat Folders)
+  Widget _filterChipsBar({
+    required int totalCount,
+    required int unreadCount,
+    required int onlineCount,
+    required int mediaCount,
+  }) {
     return SingleChildScrollView(
+      key: const PageStorageKey('home_filter_chips_scroll'),
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
@@ -753,12 +811,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(width: 8),
           _filterChip(
-            title: '🟢 Online',
+            title: 'Unread',
+            count: unreadCount,
+            isSelected: _selectedFilter == HomeFilter.unread,
+            onTap: () {
+              if (_selectedFilter != HomeFilter.unread) {
+                setState(() => _selectedFilter = HomeFilter.unread);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          _filterChip(
+            title: 'Online',
             count: onlineCount,
             isSelected: _selectedFilter == HomeFilter.online,
             onTap: () {
               if (_selectedFilter != HomeFilter.online) {
                 setState(() => _selectedFilter = HomeFilter.online);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          _filterChip(
+            title: 'Media',
+            count: mediaCount,
+            isSelected: _selectedFilter == HomeFilter.media,
+            onTap: () {
+              if (_selectedFilter != HomeFilter.media) {
+                setState(() => _selectedFilter = HomeFilter.media);
               }
             },
           ),
@@ -779,9 +859,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         AppHaptics.selection();
         onTap();
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? (context.isDark ? Colors.white : Colors.black)
@@ -844,37 +927,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Quick Search Trigger Pill when not searching
   Widget _searchTriggerPill() {
-    return GestureDetector(
-      onTap: _startSearch,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: context.surfaceMutedColor,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Material(
+        color: context.surfaceMutedColor,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.borderColor),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search_rounded,
-                color: context.textMutedColor, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Search chats, friends, or email...',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  color: context.textMutedColor,
-                ),
-              ),
+          onTap: _startSearch,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.borderColor),
             ),
-          ],
+            child: Row(
+              children: [
+                Icon(Icons.search_rounded,
+                    color: context.textMutedColor, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Search chats, friends, or email...',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: context.textMutedColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -885,13 +975,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildScrollableContent({
     required List<ChatUser> localFiltered,
     required int totalCount,
+    required int unreadCount,
     required int onlineCount,
+    required int mediaCount,
   }) {
     final bool hasLocal = localFiltered.isNotEmpty;
     final bool hasGlobal = _globalSearchResults.isNotEmpty;
 
     return ListView(
-      padding: const EdgeInsets.only(top: 4, bottom: 84),
+      padding: EdgeInsets.only(
+        top: 4,
+        bottom: 96 + MediaQuery.paddingOf(context).bottom,
+      ),
       physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics()),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -899,24 +994,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Quick Search Trigger Pill & Active Friends (Scroll with list, hidden during active search)
         if (!_isSearching) ...[
           _searchTriggerPill(),
-          _activeNowTray(localFiltered),
+          _activeNowTray(_list),
         ],
 
-        // Filter Chips Bar (All vs Online)
+        // Filter Chips Bar (Chat Folders)
         _filterChipsBar(
-          _isSearching ? localFiltered.length : totalCount,
-          _isSearching
+          totalCount: _isSearching ? localFiltered.length : totalCount,
+          unreadCount: _isSearching
+              ? localFiltered
+                  .where((u) => ConversationController.isUnread(u.id))
+                  .length
+              : unreadCount,
+          onlineCount: _isSearching
               ? localFiltered.where((u) => u.isOnline).length
               : onlineCount,
+          mediaCount: _isSearching
+              ? localFiltered
+                  .where((u) => ConversationController.hasMedia(u.id))
+                  .length
+              : mediaCount,
         ),
 
         // Global search progress indicator
-        if (_isLoadingGlobal)
-          LinearProgressIndicator(
-            minHeight: 2,
-            backgroundColor: Colors.transparent,
-            valueColor: AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
-          ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          child: _isLoadingGlobal
+              ? LinearProgressIndicator(
+                  minHeight: 2,
+                  backgroundColor: Colors.transparent,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
+                )
+              : const SizedBox.shrink(),
+        ),
 
         // Empty state when no matches/chats exist
         if (!hasLocal && !hasGlobal)
@@ -1047,6 +1157,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     }
 
+    if (_selectedFilter == HomeFilter.unread) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.primarySoftColor,
+                  borderRadius: BorderRadius.circular(36),
+                ),
+                child: Icon(
+                  Icons.mark_email_read_outlined,
+                  color: context.textPrimaryColor,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'All caught up!',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'You have no unread messages. Tap "All" to browse all your conversations.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_selectedFilter == HomeFilter.online) {
       return Center(
         child: Padding(
@@ -1080,6 +1236,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: 6),
               Text(
                 'None of your contacts are currently active. Switch to "All" to view all chats.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_selectedFilter == HomeFilter.media) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.primarySoftColor,
+                  borderRadius: BorderRadius.circular(36),
+                ),
+                child: Icon(
+                  Icons.perm_media_outlined,
+                  color: context.textPrimaryColor,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'No media chats',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Chats containing photos or voice notes will be highlighted here.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
@@ -1142,111 +1344,128 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _globalUserCard(ChatUser u) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: context.borderColor, width: 1),
         boxShadow: context.softShadow,
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: CachedNetworkImage(
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
-              imageUrl: u.image,
-              errorWidget: (context, url, error) => CircleAvatar(
-                radius: 24,
-                backgroundColor: context.primarySoftColor,
-                child: Text(
-                  u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimaryColor,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  u.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimaryColor,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  u.email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    color: context.textSecondaryColor,
-                  ),
-                ),
-                if (u.about.isNotEmpty &&
-                    u.about != "Hey, I'm using Chatty!") ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    u.about,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                      color: context.textMutedColor,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: CachedNetworkImage(
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    imageUrl: u.image,
+                    errorWidget: (context, url, error) => CircleAvatar(
+                      radius: 24,
+                      backgroundColor: context.primarySoftColor,
+                      child: Text(
+                        u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimaryColor,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ),
-                ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        u.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        u.email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: context.textSecondaryColor,
+                        ),
+                      ),
+                      if (u.about.isNotEmpty &&
+                          u.about != "Hey, I'm using Chatty!") ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          u.about,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            color: context.textMutedColor,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        context.isDark ? Colors.white : Colors.black,
+                    foregroundColor:
+                        context.isDark ? Colors.black : Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.chat_bubble_rounded, size: 14),
+                  label: const Text(
+                    'Chat',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ChatScreen(user: u)),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: context.isDark ? Colors.white : Colors.black,
-              foregroundColor: context.isDark ? Colors.black : Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-              visualDensity: VisualDensity.compact,
-            ),
-            icon: const Icon(Icons.chat_bubble_rounded, size: 14),
-            label: const Text(
-              'Chat',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

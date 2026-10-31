@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/main.dart';
@@ -19,55 +18,58 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    Future.delayed(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        systemNavigationBarColor: Colors.transparent,
-        statusBarColor: Colors.transparent,
-      ));
-      if (APIs.auth.currentUser != null) {
-        log('\nUser: ${APIs.auth.currentUser}');
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-      } else {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-      }
+      final targetScreen = APIs.auth.currentUser != null
+          ? const HomeScreen()
+          : const LoginScreen();
+
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => targetScreen,
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    mq = MediaQuery.of(context).size;
+    mq = MediaQuery.sizeOf(context);
+    final logoSize = (mq.width * 0.38).clamp(110.0, 160.0);
 
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      body: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-              // Center Branding
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: mq.width * 0.38,
-                    height: mq.width * 0.38,
-                    decoration: BoxDecoration(
-                      color: context.surfaceColor,
-                      borderRadius: BorderRadius.circular(36),
-                      boxShadow: context.softShadow,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: context.systemOverlayStyle,
+      child: Scaffold(
+        backgroundColor: context.backgroundColor,
+        body: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            height: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                // Center Branding
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: logoSize,
+                      height: logoSize,
+                      decoration: BoxDecoration(
+                        color: context.surfaceColor,
+                        borderRadius: BorderRadius.circular(36),
+                        boxShadow: context.softShadow,
+                      ),
+                      padding: const EdgeInsets.all(20),
+                      child: Image.asset('images/icon.png', fit: BoxFit.contain),
                     ),
-                    padding: const EdgeInsets.all(20),
-                    child: Image.asset('images/icon.png', fit: BoxFit.contain),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
                   Text(
                     'Chatty',
                     style: TextStyle(
@@ -133,6 +135,7 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:chatty/helper/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -43,10 +44,13 @@ class _TypingWaveDotsState extends State<TypingWaveDots>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Staggered sine wave for smooth bouncing
-        final double progress = (_controller.value - (index * 0.18)) % 1.0;
-        final double bounce = progress < 0.5 ? progress * 2 : (1.0 - progress) * 2;
-        final double offsetY = -3.5 * bounce;
+        // Smooth harmonic sine wave for natural organic bounce
+        final double phase = (_controller.value * 2 * math.pi) - (index * 0.8);
+        final double bounce = (math.sin(phase) + 1.0) / 2.0;
+        final double offsetY = -3.2 * bounce;
+
+        final Color dotColor = widget.color ??
+            (context.isDark ? AppTheme.success : const Color(0xFF047857));
 
         return Transform.translate(
           offset: Offset(0, offsetY),
@@ -55,7 +59,7 @@ class _TypingWaveDotsState extends State<TypingWaveDots>
             height: widget.dotSize,
             margin: const EdgeInsets.symmetric(horizontal: 1.2),
             decoration: BoxDecoration(
-              color: widget.color ?? AppTheme.success,
+              color: dotColor,
               shape: BoxShape.circle,
             ),
           ),
@@ -66,7 +70,8 @@ class _TypingWaveDotsState extends State<TypingWaveDots>
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = widget.color ?? AppTheme.success;
+    final activeColor = widget.color ??
+        (context.isDark ? AppTheme.success : const Color(0xFF047857));
 
     return Row(
       mainAxisSize: MainAxisSize.min,

@@ -4,16 +4,21 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/models/chat_user.dart';
+import 'package:chatty/models/message.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Manages last message timestamps for all conversations to power
-/// dynamic sorting where the latest chat is always placed on top.
+/// Manages last message timestamps and messages for all conversations to power
+/// dynamic sorting and smart category filtering (Unread, Media, etc.)
 class ConversationController {
   /// Reactive notifier containing Map of { userId: lastMessageTimestampMillis }
   static final ValueNotifier<Map<String, int>> lastMessageTimesNotifier =
       ValueNotifier<Map<String, int>>({});
+
+  /// Reactive notifier containing Map of { userId: Message }
+  static final ValueNotifier<Map<String, Message>> lastMessagesNotifier =
+      ValueNotifier<Map<String, Message>>({});
 
   static final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
       _subscriptions = {};
@@ -54,7 +59,26 @@ class ConversationController {
     return lastMessageTimesNotifier.value[userId] ?? 0;
   }
 
-  /// Sets the exact timestamp for a user (called when last message stream emits)
+  /// Returns the latest Message object for a user, or null if none
+  static Message? lastMessageFor(String userId) {
+    return lastMessagesNotifier.value[userId];
+  }
+
+  /// Checks if a conversation has unread incoming messages
+  static bool isUnread(String userId) {
+    final msg = lastMessageFor(userId);
+    if (msg == null) return false;
+    return msg.read.isEmpty && msg.fromId != APIs.myUid;
+  }
+
+  /// Checks if the latest conversation item is a photo or voice note
+  static bool hasMedia(String userId) {
+    final msg = lastMessageFor(userId);
+    if (msg == null) return false;
+    return msg.type == Type.image || msg.type == Type.audio;
+  }
+
+  /// Sets the exact timestamp for a user
   static void setLastMessageTime(String userId, int timestamp) {
     final current = Map<String, int>.from(lastMessageTimesNotifier.value);
     if (current[userId] == timestamp) return;
@@ -78,6 +102,21 @@ class ConversationController {
     }
   }
 
+  /// Sets the latest message and updates the timestamp
+  static void updateLastMessage(String userId, Message message) {
+    final sentInt = int.tryParse(message.sent) ?? 0;
+    if (sentInt > 0) {
+      updateLastMessageTime(userId, sentInt);
+    }
+    final current = Map<String, Message>.from(lastMessagesNotifier.value);
+    if (current[userId]?.sent == message.sent &&
+        current[userId]?.read == message.read) {
+      return;
+    }
+    current[userId] = message;
+    lastMessagesNotifier.value = current;
+  }
+
   /// Subscribes to the last message streams of all active users
   static void watchUsers(List<ChatUser> users) {
     for (final user in users) {
@@ -88,9 +127,8 @@ class ConversationController {
         (snapshot) {
           if (snapshot.docs.isNotEmpty) {
             final data = snapshot.docs.first.data();
-            final sentStr = data['sent']?.toString() ?? '';
-            final sentInt = int.tryParse(sentStr) ?? 0;
-            setLastMessageTime(user.id, sentInt);
+            final msg = Message.fromJson(data);
+            updateLastMessage(user.id, msg);
           } else {
             // No messages in this conversation
             setLastMessageTime(user.id, 0);
@@ -130,5 +168,6 @@ class ConversationController {
   static void reset() {
     dispose();
     lastMessageTimesNotifier.value = {};
+    lastMessagesNotifier.value = {};
   }
 }

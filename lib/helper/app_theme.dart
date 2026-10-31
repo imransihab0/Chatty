@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Central Design System & Theme for Chatty (Light & Dark Mode)
 class AppTheme {
@@ -10,8 +11,10 @@ class AppTheme {
 
   static const Color secondary = Color(0xFF27272A); // Neutral Dark Charcoal
   static const Color accent = Color(0xFF71717A); // Neutral Mid Grey
-  static const Color success = Color(0xFF10B981); // Emerald Green (online)
+  static const Color success = Color(0xFF22C55E); // Green 500 (standard online dot)
   static const Color danger = Color(0xFFEF4444); // Red (logout/error)
+  static const Color charcoal = Color(0xFF18181B); // Zinc-900 Neutral Charcoal
+  static const Color charcoalMuted = Color(0xFF27272A); // Zinc-800 Neutral Charcoal
 
   // Light Mode Colors (Pure White & Black Monochrome - Zero Blue/Slate)
   static const Color background = Color(0xFFF7F7F8); // Neutral Light Background (0% blue)
@@ -22,7 +25,7 @@ class AppTheme {
 
   static const Color textPrimary = Color(0xFF09090B); // Pure Crisp Black
   static const Color textSecondary = Color(0xFF52525B); // Neutral Mid Grey
-  static const Color textMuted = Color(0xFFA1A1AA); // Neutral Muted Grey
+  static const Color textMuted = Color(0xFF71717A); // Neutral Mid Grey (4.74:1 on Surface - PASS WCAG AA)
   static const Color textWhite = Color(0xFFFFFFFF);
 
   // Dark Mode Colors (Pure Black & White Monochrome - Zero Blue)
@@ -34,7 +37,7 @@ class AppTheme {
 
   static const Color darkTextPrimary = Color(0xFFFFFFFF); // Crisp Pure White
   static const Color darkTextSecondary = Color(0xFFA3A3A3); // Crisp Neutral Grey
-  static const Color darkTextMuted = Color(0xFF737373); // Muted Neutral Grey
+  static const Color darkTextMuted = Color(0xFF8E8E93); // Crisp Neutral Grey (5.21:1 on Dark Surface - PASS WCAG AA)
   static const Color darkPrimarySoft = Color(0xFF262626); // Neutral Charcoal Accent
   static const Color darkPrimary = Color(0xFFFFFFFF); // Crisp Pure White Accent
   static const Color darkOnPrimary = Color(0xFF000000); // Pure Black on White
@@ -89,6 +92,13 @@ class AppTheme {
         centerTitle: false,
         backgroundColor: surface,
         foregroundColor: textPrimary,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
         titleTextStyle: TextStyle(
           fontFamily: 'Lexend',
           fontSize: 20,
@@ -161,6 +171,13 @@ class AppTheme {
         centerTitle: false,
         backgroundColor: darkBackground,
         foregroundColor: darkTextPrimary,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
         titleTextStyle: TextStyle(
           fontFamily: 'Lexend',
           fontSize: 20,
@@ -230,6 +247,29 @@ extension AppThemeContext on BuildContext {
       isDark ? AppTheme.darkPrimary : AppTheme.primary;
   Color get onPrimaryColor =>
       isDark ? AppTheme.darkOnPrimary : Colors.white;
+  Color get dangerColor => AppTheme.danger;
+  Color get dangerSoftColor => AppTheme.danger.withValues(alpha: 0.12);
+  Color get badgeBackgroundColor =>
+      isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5);
+  Color get badgeIconColor =>
+      isDark ? Colors.white : const Color(0xFF18181B);
+  Color get chevronColor =>
+      isDark ? const Color(0xFF71717A) : const Color(0xFFA1A1AA);
   List<BoxShadow> get softShadow =>
       isDark ? AppTheme.darkSoftShadow : AppTheme.softShadow;
+  SystemUiOverlayStyle get systemOverlayStyle => isDark
+      ? const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        )
+      : const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        );
 }

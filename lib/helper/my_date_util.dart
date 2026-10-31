@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 // make time readable
 class MyDateUtil{
   static String getFormattedTime({required BuildContext context, required String time}){
-    final date = DateTime.fromMillisecondsSinceEpoch(int.tryParse(time) ?? 0);
+    final int millis = int.tryParse(time) ?? 0;
+    if (millis <= 0) return '';
+    final date = DateTime.fromMillisecondsSinceEpoch(millis);
     return TimeOfDay.fromDateTime(date).format(context);
   }
 
 // get last msg time
   static String getLastMessageTime(
       {required BuildContext context, required String time, bool showYear = false}) {
-    final DateTime sent = DateTime.fromMillisecondsSinceEpoch(int.tryParse(time) ?? 0);
+    final int millis = int.tryParse(time) ?? 0;
+    if (millis <= 0) return '';
+    final DateTime sent = DateTime.fromMillisecondsSinceEpoch(millis);
     final DateTime now = DateTime.now();
 
     if (now.day == sent.day && now.month == sent.month && now.year == sent.year) {
@@ -25,7 +29,7 @@ class MyDateUtil{
   static String getLastActiveTime(
       {required BuildContext context, required String lastActive}) {
     final int i = int.tryParse(lastActive) ?? -1;
-    if (i == -1) return 'Last seen recently';
+    if (i <= 0) return 'Last seen recently';
 
     final DateTime time = DateTime.fromMillisecondsSinceEpoch(i);
     final DateTime now = DateTime.now();
@@ -35,7 +39,10 @@ class MyDateUtil{
       return 'Last seen today at $formattedTime';
     }
 
-    if ((now.difference(time).inHours / 24).round() == 1) {
+    final DateTime yesterday = now.subtract(const Duration(days: 1));
+    if (time.day == yesterday.day &&
+        time.month == yesterday.month &&
+        time.year == yesterday.year) {
       return 'Last seen yesterday at $formattedTime';
     }
 
@@ -83,6 +90,9 @@ class MyDateUtil{
   }
 
   // Get conversational date header for chat timeline
+  static String getDateHeader(BuildContext context, String time) =>
+      getChatDateHeader(time);
+
   static String getChatDateHeader(String timeMillis) {
     final int millis = int.tryParse(timeMillis) ?? 0;
     if (millis <= 0) return '';

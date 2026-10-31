@@ -34,6 +34,7 @@ class APIs{
   //to return current user
   static User? get currentUser => auth.currentUser;
   static User get user => auth.currentUser!;
+  static String get myUid => auth.currentUser?.uid ?? '';
 
   //for checking if user exists or not?
   static Future<void> getMyInfo() async {
@@ -224,9 +225,8 @@ class APIs{
         'last_from_id': user.uid,
       }, SetOptions(merge: true));
 
-      // Optimistically update conversation controller for instant reordering
-      ConversationController.updateLastMessageTime(
-          chatUser.id, int.parse(time));
+      // Optimistically update conversation controller for instant reordering and filter updates
+      ConversationController.updateLastMessage(chatUser.id, message);
 
       return true;
     } catch (e) {
@@ -306,8 +306,14 @@ class APIs{
         'last_from_id': user.uid,
       }, SetOptions(merge: true));
 
-      ConversationController.updateLastMessageTime(
-          chatUser.id, int.parse(time));
+      ConversationController.updateLastMessage(chatUser.id, message);
+
+      // Clean up local temporary file after upload
+      if (await audioFile.exists()) {
+        try {
+          await audioFile.delete();
+        } catch (_) {}
+      }
 
       return true;
     } catch (e) {
@@ -319,12 +325,14 @@ class APIs{
   // delete message
   static Future<void> deleteMessage(Message message) async {
     try {
+      final otherId =
+          message.fromId == (auth.currentUser?.uid ?? '') ? message.toId : message.fromId;
       await firestore
-          .collection('chats/${getConversationID(message.toId)}/messages/')
+          .collection('chats/${getConversationID(otherId)}/messages/')
           .doc(message.sent)
           .delete();
 
-      if (message.type == Type.image) {
+      if (message.type == Type.image || message.type == Type.audio) {
         await storage.refFromURL(message.msg).delete().catchError((_) {});
       }
     } catch (e) {
@@ -335,8 +343,10 @@ class APIs{
   // edit message
   static Future<void> updateMessage(Message message, String updatedMsg) async {
     try {
+      final otherId =
+          message.fromId == (auth.currentUser?.uid ?? '') ? message.toId : message.fromId;
       await firestore
-          .collection('chats/${getConversationID(message.toId)}/messages/')
+          .collection('chats/${getConversationID(otherId)}/messages/')
           .doc(message.sent)
           .update({'msg': updatedMsg});
     } catch (e) {

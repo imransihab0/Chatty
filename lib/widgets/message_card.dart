@@ -1,11 +1,11 @@
 
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/helper/my_date_util.dart';
-import 'package:chatty/main.dart';
 import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/media_viewer_screen.dart';
 import 'package:chatty/widgets/audio_waveform_player.dart';
@@ -30,6 +30,102 @@ class MessageCard extends StatefulWidget {
 }
 
 class _MessageCardState extends State<MessageCard> {
+  static final RegExp _urlRegex = RegExp(
+    r'(https?:\/\/[^\s]+)',
+    caseSensitive: false,
+  );
+
+  Widget _buildLinkPreviewIfNeeded(String text, bool isMe) {
+    final match = _urlRegex.firstMatch(text);
+    if (match == null) return const SizedBox.shrink();
+
+    final urlString = match.group(0)!;
+    final uri = Uri.tryParse(urlString);
+    if (uri == null || uri.host.isEmpty) return const SizedBox.shrink();
+
+    final host = uri.host.toLowerCase().replaceAll('www.', '');
+    IconData icon = Icons.language_rounded;
+    Color iconColor = isMe ? Colors.white70 : context.textPrimaryColor;
+
+    if (host.contains('youtube') || host.contains('youtu.be')) {
+      icon = Icons.play_circle_filled_rounded;
+      iconColor = isMe ? Colors.white70 : context.textPrimaryColor;
+    } else if (host.contains('github')) {
+      icon = Icons.code_rounded;
+    } else if (host.contains('twitter') || host.contains('x.com')) {
+      icon = Icons.tag_rounded;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        AppHaptics.light();
+        Clipboard.setData(ClipboardData(text: urlString));
+        Dialogs.showSnackbar(context, 'Link copied: $host');
+      },
+      child: Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isMe
+              ? Colors.white.withValues(alpha: 0.15)
+              : context.surfaceMutedColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isMe
+                ? Colors.white.withValues(alpha: 0.25)
+                : context.borderColor,
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    host,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isMe ? Colors.white : context.textPrimaryColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    urlString,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 10,
+                      color: isMe
+                          ? Colors.white.withValues(alpha: 0.75)
+                          : context.textSecondaryColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 13,
+              color: isMe ? Colors.white60 : context.textSecondaryColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showEditMessageDialog() {
     String updatedMsg = widget.message.msg;
     showDialog(
@@ -46,30 +142,37 @@ class _MessageCardState extends State<MessageCard> {
             color: context.textPrimaryColor,
           ),
         ),
-        content: TextFormField(
-          initialValue: updatedMsg,
-          maxLines: null,
-          autofocus: true,
-          onChanged: (val) => updatedMsg = val,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 14,
-            color: context.textPrimaryColor,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.35,
           ),
-          decoration: InputDecoration(
-            hintText: 'Enter updated message...',
-            hintStyle: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 13,
-              color: context.textMutedColor,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: context.borderColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: context.textPrimaryColor, width: 1.5),
+          child: SingleChildScrollView(
+            child: TextFormField(
+              initialValue: updatedMsg,
+              maxLines: null,
+              autofocus: true,
+              onChanged: (val) => updatedMsg = val,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: context.textPrimaryColor,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Enter updated message...',
+                hintStyle: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: context.textMutedColor,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.textPrimaryColor, width: 1.5),
+                ),
+              ),
             ),
           ),
         ),
@@ -114,7 +217,7 @@ class _MessageCardState extends State<MessageCard> {
 
   void _showMessageOptions() {
     AppHaptics.medium();
-    final bool isMe = APIs.user.uid == widget.message.fromId;
+    final bool isMe = APIs.myUid == widget.message.fromId;
 
     showModalBottomSheet(
       context: context,
@@ -126,58 +229,86 @@ class _MessageCardState extends State<MessageCard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Floating Quick Reaction Emoji Capsule (Telegram / iOS Style)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: context.surfaceColor,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: context.borderColor),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                            alpha: context.isDark ? 0.35 : 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+                // Floating Quick Reaction Emoji Capsule (Telegram / iOS Style with Frosted Blur)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: context.surfaceColor.withValues(
+                            alpha: context.isDark ? 0.85 : 0.92),
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                            color: context.borderColor, width: 0.8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: context.isDark ? 0.35 : 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children:
-                        ['❤️', '👍', '😂', '😮', '😢', '🔥', '🙏'].map((emoji) {
-                      final bool isSelected = widget.message.reaction == emoji;
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () {
-                          AppHaptics.selection();
-                          Navigator.pop(context);
-                          APIs.setMessageReaction(widget.message, emoji);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? (context.isDark
-                                    ? Colors.white.withValues(alpha: 0.2)
-                                    : Colors.black.withValues(alpha: 0.1))
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                            border: isSelected
-                                ? Border.all(
-                                    color: context.textPrimaryColor, width: 1.5)
-                                : null,
-                          ),
-                          child: Text(
-                            emoji,
-                            style: const TextStyle(fontSize: 24),
-                          ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            '❤️',
+                            '👍',
+                            '👎',
+                            '🔥',
+                            '😂',
+                            '🎉',
+                            '😮',
+                            '😢',
+                            '🙏'
+                          ].map((emoji) {
+                            final bool isSelected =
+                                widget.message.reaction == emoji;
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                AppHaptics.selection();
+                                Navigator.pop(context);
+                                // Toggle emoji: tap again to remove reaction
+                                APIs.setMessageReaction(
+                                    widget.message, isSelected ? '' : emoji);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? (context.isDark
+                                          ? Colors.white.withValues(alpha: 0.2)
+                                          : Colors.black.withValues(alpha: 0.1))
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: context.textPrimaryColor,
+                                          width: 1.5)
+                                      : null,
+                                ),
+                                child: MediaQuery.withClampedTextScaling(
+                                  maxScaleFactor: 1.2,
+                                  child: Text(
+                                    emoji,
+                                    style: const TextStyle(fontSize: 22),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -219,7 +350,7 @@ class _MessageCardState extends State<MessageCard> {
                         },
                       ),
                       if (widget.message.type == Type.text) ...[
-                        Divider(height: 1, color: context.borderColor),
+                        Divider(height: 1, indent: 54, color: context.borderColor),
                         ListTile(
                           leading: Icon(Icons.copy_rounded,
                               color: context.textPrimaryColor),
@@ -242,7 +373,7 @@ class _MessageCardState extends State<MessageCard> {
                         ),
                       ],
                       if (isMe && widget.message.type == Type.text) ...[
-                        Divider(height: 1, color: context.borderColor),
+                        Divider(height: 1, indent: 54, color: context.borderColor),
                         ListTile(
                           leading: Icon(Icons.edit_rounded,
                               color: context.textPrimaryColor),
@@ -261,7 +392,7 @@ class _MessageCardState extends State<MessageCard> {
                         ),
                       ],
                       if (isMe) ...[
-                        Divider(height: 1, color: context.borderColor),
+                        Divider(height: 1, indent: 54, color: context.borderColor),
                         ListTile(
                           leading: const Icon(Icons.delete_outline_rounded,
                               color: AppTheme.danger),
@@ -296,39 +427,45 @@ class _MessageCardState extends State<MessageCard> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isMe = APIs.user.uid == widget.message.fromId;
+    final bool isMe = APIs.myUid == widget.message.fromId;
 
-    return Dismissible(
-      key: Key('msg_${widget.message.sent}'),
-      direction: DismissDirection.startToEnd,
-      confirmDismiss: (direction) async {
-        AppHaptics.light();
-        if (widget.onSwipeReply != null) {
-          widget.onSwipeReply!(widget.message);
-        }
-        return false;
-      },
-      background: Container(
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 20),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: (context.isDark ? Colors.white : Colors.black)
-                .withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.reply_rounded,
-            color: context.isDark ? Colors.white : Colors.black,
-            size: 20,
+    return Padding(
+      // Left inset of 20pt on incoming messages preserves the native iOS edge back-swipe gesture arena
+      padding: EdgeInsets.only(
+        left: isMe ? 14 : 20,
+        right: 14,
+        top: 4,
+        bottom: 4,
+      ),
+      child: Dismissible(
+        key: Key('msg_${widget.message.sent}'),
+        direction: DismissDirection.startToEnd,
+        confirmDismiss: (direction) async {
+          AppHaptics.light();
+          if (widget.onSwipeReply != null) {
+            widget.onSwipeReply!(widget.message);
+          }
+          return false;
+        },
+        background: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 10),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (context.isDark ? Colors.white : Colors.black)
+                  .withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.reply_rounded,
+              color: context.isDark ? Colors.white : Colors.black,
+              size: 20,
+            ),
           ),
         ),
-      ),
-      child: GestureDetector(
-        onLongPress: _showMessageOptions,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        child: GestureDetector(
+          onLongPress: _showMessageOptions,
           child: isMe ? _myMessage() : _otherMessage(),
         ),
       ),
@@ -364,6 +501,8 @@ class _MessageCardState extends State<MessageCard> {
             widget.message.replyUser.isNotEmpty
                 ? widget.message.replyUser
                 : 'Reply',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 11,
@@ -442,31 +581,43 @@ class _MessageCardState extends State<MessageCard> {
         padding: EdgeInsets.only(
             bottom: widget.message.reaction.isNotEmpty ? 8 : 0),
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: mq.width * 0.78),
+          constraints: BoxConstraints(
+            minWidth: widget.message.reaction.isNotEmpty ? 92 : 0,
+            maxWidth: MediaQuery.sizeOf(context).width * 0.76,
+          ),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: context.surfaceColor,
+                  color: context.isDark
+                      ? const Color(0xFF222224)
+                      : context.surfaceColor,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(18),
                     topRight: Radius.circular(18),
                     bottomRight: Radius.circular(18),
                     bottomLeft: Radius.circular(4),
                   ),
-                  border: Border.all(color: context.borderColor, width: 1),
+                  border: Border.all(
+                    color: context.isDark
+                        ? const Color(0xFF2E2E32)
+                        : context.borderColor,
+                    width: 0.8,
+                  ),
                   boxShadow: context.softShadow,
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: (widget.message.type == Type.image &&
+                          widget.message.replyMsg.isEmpty)
+                      ? const EdgeInsets.all(4)
+                      : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _replyQuoteHeader(false),
-                      if (widget.message.type == Type.text)
+                      if (widget.message.type == Type.text) ...[
                         _buildHighlightedText(
                           text: widget.message.msg,
                           baseStyle: TextStyle(
@@ -479,7 +630,9 @@ class _MessageCardState extends State<MessageCard> {
                               ? const Color(0xFF333333)
                               : const Color(0xFFE4E4E7),
                           highlightTextColor: context.textPrimaryColor,
-                        )
+                        ),
+                        _buildLinkPreviewIfNeeded(widget.message.msg, false),
+                      ]
                       else if (widget.message.type == Type.audio)
                         AudioWaveformPlayer(
                           isMe: false,
@@ -582,7 +735,7 @@ class _MessageCardState extends State<MessageCard> {
               if (widget.message.reaction.isNotEmpty)
                 Positioned(
                   bottom: -8,
-                  right: 8,
+                  left: 10,
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -613,7 +766,10 @@ class _MessageCardState extends State<MessageCard> {
         padding: EdgeInsets.only(
             bottom: widget.message.reaction.isNotEmpty ? 8 : 0),
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: mq.width * 0.78),
+          constraints: BoxConstraints(
+            minWidth: widget.message.reaction.isNotEmpty ? 92 : 0,
+            maxWidth: MediaQuery.sizeOf(context).width * 0.76,
+          ),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -621,12 +777,12 @@ class _MessageCardState extends State<MessageCard> {
                 decoration: BoxDecoration(
                   gradient: context.isDark
                       ? const LinearGradient(
-                          colors: [Color(0xFF2C2C2C), Color(0xFF222222)],
+                          colors: [Color(0xFF242426), Color(0xFF1C1C1E)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
                       : const LinearGradient(
-                          colors: [Color(0xFF1C1C1E), Color(0xFF000000)],
+                          colors: [Color(0xFF1C1C1E), Color(0xFF09090B)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -637,7 +793,7 @@ class _MessageCardState extends State<MessageCard> {
                     bottomRight: Radius.circular(4),
                   ),
                   border: context.isDark
-                      ? Border.all(color: const Color(0xFF383838), width: 0.8)
+                      ? Border.all(color: const Color(0xFF38383C), width: 0.8)
                       : null,
                   boxShadow: context.isDark
                       ? null
@@ -650,14 +806,16 @@ class _MessageCardState extends State<MessageCard> {
                         ],
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: (widget.message.type == Type.image &&
+                          widget.message.replyMsg.isEmpty)
+                      ? const EdgeInsets.all(4)
+                      : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _replyQuoteHeader(true),
-                      if (widget.message.type == Type.text)
+                      if (widget.message.type == Type.text) ...[
                         _buildHighlightedText(
                           text: widget.message.msg,
                           baseStyle: const TextStyle(
@@ -666,9 +824,11 @@ class _MessageCardState extends State<MessageCard> {
                             color: Colors.white,
                             height: 1.35,
                           ),
-                          highlightColor: Colors.black26,
-                          highlightTextColor: Colors.yellowAccent,
-                        )
+                          highlightColor: Colors.white.withValues(alpha: 0.25),
+                          highlightTextColor: Colors.white,
+                        ),
+                        _buildLinkPreviewIfNeeded(widget.message.msg, true),
+                      ]
                       else if (widget.message.type == Type.audio)
                         AudioWaveformPlayer(
                           isMe: true,
@@ -759,14 +919,14 @@ class _MessageCardState extends State<MessageCard> {
                                                 ? const Icon(
                                                     Icons.done_all_rounded,
                                                     key: ValueKey('read'),
-                                                    color: Color(0xFF67E8F9),
+                                                    color: Colors.white,
                                                     size: 13,
                                                   )
                                                 : Icon(
                                                     Icons.done_rounded,
                                                     key: const ValueKey('sent'),
                                                     color: Colors.white
-                                                        .withValues(alpha: 0.8),
+                                                        .withValues(alpha: 0.7),
                                                     size: 13,
                                                   ),
                                           ),
@@ -781,39 +941,42 @@ class _MessageCardState extends State<MessageCard> {
                         ),
                       if (widget.message.type != Type.image) ...[
                         const SizedBox(height: 3),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              MyDateUtil.getFormattedTime(
-                                  context: context, time: widget.message.sent),
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 10,
-                                color: Colors.white.withValues(alpha: 0.8),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                MyDateUtil.getFormattedTime(
+                                    context: context, time: widget.message.sent),
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 10,
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 300),
-                              transitionBuilder: (child, anim) =>
-                                  ScaleTransition(scale: anim, child: child),
-                              child: widget.message.read.isNotEmpty
-                                  ? const Icon(
-                                      Icons.done_all_rounded,
-                                      key: ValueKey('read'),
-                                      color: Color(0xFF67E8F9),
-                                      size: 14,
-                                    )
-                                  : Icon(
-                                      Icons.done_rounded,
-                                      key: const ValueKey('sent'),
-                                      color:
-                                          Colors.white.withValues(alpha: 0.75),
-                                      size: 14,
-                                    ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
+                                child: widget.message.read.isNotEmpty
+                                    ? const Icon(
+                                        Icons.done_all_rounded,
+                                        key: ValueKey('read'),
+                                        color: Colors.white,
+                                        size: 14,
+                                      )
+                                    : Icon(
+                                        Icons.done_rounded,
+                                        key: const ValueKey('sent'),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.75),
+                                        size: 14,
+                                      ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ],
@@ -823,7 +986,7 @@ class _MessageCardState extends State<MessageCard> {
               if (widget.message.reaction.isNotEmpty)
                 Positioned(
                   bottom: -8,
-                  left: 8,
+                  right: 10,
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
