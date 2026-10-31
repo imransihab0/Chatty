@@ -9,6 +9,7 @@ import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
+import 'package:chatty/services/conversation_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -221,6 +222,13 @@ class _ChatUserCardState extends State<ChatUserCard> {
                       [];
                   if (list.isNotEmpty) {
                     _message = list[0];
+                    final sentTime = int.tryParse(_message!.sent) ?? 0;
+                    if (sentTime > 0) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        ConversationController.updateLastMessageTime(
+                            widget.user.id, sentTime);
+                      });
+                    }
                   }
 
                   final bool isUnread = _message != null &&

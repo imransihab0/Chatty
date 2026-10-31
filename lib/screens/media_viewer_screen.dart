@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/helper/dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,7 +99,7 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           valueColor:
-                              const AlwaysStoppedAnimation<Color>(Colors.white),
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                       errorWidget: (context, url, error) => Column(

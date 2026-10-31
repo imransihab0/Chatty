@@ -8,6 +8,7 @@ import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
+import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:chatty/widgets/chat_user_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     _usersStream = APIs.getAllUsers();
     APIs.getMyInfo();
+    ConversationController.init();
     WidgetsBinding.instance.addObserver(this);
     APIs.updateActiveStatus(true);
   }
@@ -290,6 +292,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         .toList() ??
                     [];
 
+                // Start observing latest messages across all users in background
+                ConversationController.watchUsers(_list);
+
                 final onlineCount =
                     _list.where((u) => u.isOnline).length;
                 final totalCount = _list.length;
@@ -314,19 +319,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 return ValueListenableBuilder<Set<String>>(
                   valueListenable: ChatSettingsController.pinnedNotifier,
                   builder: (context, pinnedSet, _) {
-                    // Sort pinned conversations to the top
-                    localFiltered.sort((a, b) {
-                      final bool aPinned = pinnedSet.contains(a.id);
-                      final bool bPinned = pinnedSet.contains(b.id);
-                      if (aPinned && !bPinned) return -1;
-                      if (!aPinned && bPinned) return 1;
-                      return 0;
-                    });
+                    return ValueListenableBuilder<Map<String, int>>(
+                      valueListenable:
+                          ConversationController.lastMessageTimesNotifier,
+                      builder: (context, messageTimes, _) {
+                        // Sort conversations:
+                        // 1. Pinned conversations to the top
+                        // 2. Latest chat timestamp descending (most recent chat on top)
+                        // 3. Fallback to lastActive descending, then alphabetical by name
+                        localFiltered.sort((a, b) {
+                          final bool aPinned = pinnedSet.contains(a.id);
+                          final bool bPinned = pinnedSet.contains(b.id);
+                          if (aPinned && !bPinned) return -1;
+                          if (!aPinned && bPinned) return 1;
 
-                    return _buildScrollableContent(
-                      localFiltered: localFiltered,
-                      totalCount: totalCount,
-                      onlineCount: onlineCount,
+                          final int timeA = messageTimes[a.id] ?? 0;
+                          final int timeB = messageTimes[b.id] ?? 0;
+
+                          if (timeA > 0 || timeB > 0) {
+                            if (timeA != timeB) {
+                              return timeB.compareTo(timeA); // latest chat on top
+                            }
+                          }
+
+                          final int activeA =
+                              int.tryParse(a.lastActive) ?? 0;
+                          final int activeB =
+                              int.tryParse(b.lastActive) ?? 0;
+                          if (activeA != activeB) {
+                            return activeB.compareTo(activeA);
+                          }
+
+                          return a.name
+                              .toLowerCase()
+                              .compareTo(b.name.toLowerCase());
+                        });
+
+                        return _buildScrollableContent(
+                          localFiltered: localFiltered,
+                          totalCount: totalCount,
+                          onlineCount: onlineCount,
+                        );
+                      },
                     );
                   },
                 );
@@ -870,7 +904,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Quick Search Trigger Pill & Active Friends (Scroll with list, hidden during active search)
         if (!_isSearching) ...[
           _searchTriggerPill(),
-          _activeNowTray(_list),
+          _activeNowTray(localFiltered),
         ],
 
         // Filter Chips Bar (All vs Online)

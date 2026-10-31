@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/models/message.dart';
+import 'package:chatty/services/conversation_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -175,9 +176,22 @@ class APIs{
           replyMsg: replyMsg,
           replyUser: replyUser);
 
-      final ref = firestore
-          .collection('chats/${getConversationID(chatUser.id)}/messages/');
+      final convoId = getConversationID(chatUser.id);
+      final ref = firestore.collection('chats/$convoId/messages/');
       await ref.doc(time).set(message.toJson());
+
+      // Update conversation metadata on the parent document
+      await firestore.collection('chats').doc(convoId).set({
+        'last_message_time': time,
+        'last_message': msg,
+        'last_message_type': type.name,
+        'last_from_id': user.uid,
+      }, SetOptions(merge: true));
+
+      // Optimistically update conversation controller for instant reordering
+      ConversationController.updateLastMessageTime(
+          chatUser.id, int.parse(time));
+
       return true;
     } catch (e) {
       log('Error sendMessage: $e');

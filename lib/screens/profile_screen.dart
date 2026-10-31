@@ -7,6 +7,7 @@ import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/screens/auth/login_screen.dart';
 import 'package:chatty/screens/media_viewer_screen.dart';
+import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -94,6 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirm != true || !mounted) return;
 
     Dialogs.showProgressbar(context);
+    ConversationController.reset();
     await APIs.updateActiveStatus(false);
     await APIs.auth.signOut();
     await GoogleSignIn().signOut();
@@ -537,7 +539,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         value: context.isDark,
                         activeTrackColor:
                             context.isDark ? Colors.white : Colors.black,
-                        activeColor:
+                        activeThumbColor:
                             context.isDark ? Colors.black : Colors.white,
                         onChanged: (_) {
                           AppHaptics.medium();
@@ -560,7 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         value: AppHaptics.enabled,
                         activeTrackColor:
                             context.isDark ? Colors.white : Colors.black,
-                        activeColor:
+                        activeThumbColor:
                             context.isDark ? Colors.black : Colors.white,
                         onChanged: (val) {
                           setState(() => AppHaptics.enabled = val);
