@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../api/apis.dart';
 import '../helper/app_haptics.dart';
 import '../helper/app_theme.dart';
@@ -39,14 +40,16 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _typingTimer;
   bool _isTyping = false;
 
-  // Scroll to Bottom & Unread Badge
-  bool _showScrollToBottom = false;
-  int _newMessagesWhileScrolled = 0;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _messagesStream;
+
+  // Scroll to Bottom & Unread Badge (ValueNotifiers isolate scroll state from StreamBuilder)
+  final ValueNotifier<bool> _showScrollToBottomNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<int> _newMessagesWhileScrolledNotifier = ValueNotifier<int>(0);
   int _lastKnownCount = 0;
 
   // Sticky Floating Date Header
-  String? _floatingDateText;
-  bool _showFloatingDate = false;
+  final ValueNotifier<String?> _floatingDateNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<bool> _showFloatingDateNotifier = ValueNotifier<bool>(false);
   Timer? _floatingDateTimer;
 
   // In-Chat Search Stepper
@@ -56,6 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _messagesStream = APIs.getAllMessages(widget.user);
     _scrollController = ScrollController();
     _scrollController.addListener(_onChatScroll);
   }
@@ -64,11 +68,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted || !_scrollController.hasClients) return;
     final offset = _scrollController.offset;
     final shouldShow = offset > 240;
-    if (shouldShow != _showScrollToBottom) {
-      setState(() {
-        _showScrollToBottom = shouldShow;
-        if (!shouldShow) _newMessagesWhileScrolled = 0;
-      });
+    if (shouldShow != _showScrollToBottomNotifier.value) {
+      _showScrollToBottomNotifier.value = shouldShow;
+      if (!shouldShow) _newMessagesWhileScrolledNotifier.value = 0;
     }
 
     if (_list.isNotEmpty) {
@@ -82,15 +84,15 @@ class _ChatScreenState extends State<ChatScreen> {
       final approxIndex =
           (topOffset / 72.0).floor().clamp(0, _list.length - 1);
       final header = MyDateUtil.getDateHeader(context, _list[approxIndex].sent);
-      if (header != _floatingDateText) {
-        setState(() => _floatingDateText = header);
+      if (header != _floatingDateNotifier.value) {
+        _floatingDateNotifier.value = header;
       }
-      if (!_showFloatingDate) {
-        setState(() => _showFloatingDate = true);
+      if (!_showFloatingDateNotifier.value) {
+        _showFloatingDateNotifier.value = true;
       }
       _floatingDateTimer?.cancel();
       _floatingDateTimer = Timer(const Duration(milliseconds: 1600), () {
-        if (mounted) setState(() => _showFloatingDate = false);
+        if (mounted) _showFloatingDateNotifier.value = false;
       });
     }
   }
@@ -99,6 +101,10 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _scrollController.removeListener(_onChatScroll);
     _scrollController.dispose();
+    _showScrollToBottomNotifier.dispose();
+    _newMessagesWhileScrolledNotifier.dispose();
+    _floatingDateNotifier.dispose();
+    _showFloatingDateNotifier.dispose();
     _floatingDateTimer?.cancel();
     _typingTimer?.cancel();
     if (_isTyping) {
@@ -180,136 +186,159 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildScrollToBottomButton() {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      bottom: _showScrollToBottom ? 16 : -60,
-      right: 16,
-      child: IgnorePointer(
-        ignoring: !_showScrollToBottom,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 180),
-          opacity: _showScrollToBottom ? 1.0 : 0.0,
-          child: GestureDetector(
-            onTap: () {
-              AppHaptics.light();
-              setState(() => _newMessagesWhileScrolled = 0);
-              _scrollController.animateTo(
-                0,
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-              );
-            },
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: context.surfaceColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: context.borderColor, width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.16),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: context.textPrimaryColor,
-                    size: 26,
-                  ),
-                ),
-                if (_newMessagesWhileScrolled > 0)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    return ValueListenableBuilder<bool>(
+      valueListenable: _showScrollToBottomNotifier,
+      builder: (context, showBtn, _) {
+        return AnimatedPositioned(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          bottom: showBtn ? 16 : -60,
+          right: 16,
+          child: IgnorePointer(
+            ignoring: !showBtn,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: showBtn ? 1.0 : 0.0,
+              child: GestureDetector(
+                onTap: () {
+                  AppHaptics.light();
+                  _newMessagesWhileScrolledNotifier.value = 0;
+                  _scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
-                        color: AppTheme.danger,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: context.surfaceColor, width: 2),
+                        color: context.surfaceColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: context.borderColor, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.16),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        '$_newMessagesWhileScrolled',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: context.textPrimaryColor,
+                        size: 26,
                       ),
                     ),
-                  ),
-              ],
+                    ValueListenableBuilder<int>(
+                      valueListenable: _newMessagesWhileScrolledNotifier,
+                      builder: (context, newCount, _) {
+                        if (newCount <= 0) return const SizedBox.shrink();
+                        return Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.danger,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: context.surfaceColor, width: 2),
+                            ),
+                            child: Text(
+                              '$newCount',
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildStickyDateHeader() {
-    if (_floatingDateText == null || _floatingDateText!.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    return ValueListenableBuilder<String?>(
+      valueListenable: _floatingDateNotifier,
+      builder: (context, dateText, _) {
+        if (dateText == null || dateText.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      top: _showFloatingDate ? 10 : -45,
-      left: 0,
-      right: 0,
-      child: IgnorePointer(
-        ignoring: !_showFloatingDate,
-        child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 180),
-        opacity: _showFloatingDate ? 1.0 : 0.0,
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: context.isDark
-                  ? const Color(0xFF1E1E20)
-                  : const Color(0xFFE4E4E7),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: context.isDark
-                    ? const Color(0xFF2C2C2E)
-                    : const Color(0xFFD4D4D8),
-                width: 0.8,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: context.isDark ? 0.35 : 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+        return ValueListenableBuilder<bool>(
+          valueListenable: _showFloatingDateNotifier,
+          builder: (context, showDate, _) {
+            return AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              top: showDate ? 10 : -45,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: !showDate,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  opacity: showDate ? 1.0 : 0.0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: context.isDark
+                            ? const Color(0xFF1E1E20)
+                            : const Color(0xFFE4E4E7),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: context.isDark
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFD4D4D8),
+                          width: 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: context.isDark ? 0.35 : 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        dateText,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: context.isDark
+                              ? const Color(0xFFE4E4E7)
+                              : const Color(0xFF18181B),
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ],
-            ),
-            child: Text(
-              _floatingDateText!,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: context.isDark
-                    ? const Color(0xFFE4E4E7)
-                    : const Color(0xFF18181B),
-                letterSpacing: 0.4,
               ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildSearchStepperBar() {
@@ -558,7 +587,7 @@ class _ChatScreenState extends State<ChatScreen> {
               _buildSearchStepperBar(),
             Expanded(
               child: StreamBuilder(
-                stream: APIs.getAllMessages(widget.user),
+                stream: _messagesStream,
                 builder: (context, snapshot) {
                   switch (snapshot.connectionState) {
                     case ConnectionState.waiting:
@@ -577,8 +606,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                       if (prevCount > 0 &&
                           _list.length > prevCount &&
-                          _showScrollToBottom) {
-                        _newMessagesWhileScrolled += (_list.length - prevCount);
+                          _showScrollToBottomNotifier.value) {
+                        _newMessagesWhileScrolledNotifier.value += (_list.length - prevCount);
                       }
                       _lastKnownCount = _list.length;
 
@@ -635,7 +664,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             reverse: true,
                             itemCount: _list.length,
                             padding: const EdgeInsets.only(top: 10, bottom: 6),
-                            physics: const BouncingScrollPhysics(),
+                            physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics()),
                             keyboardDismissBehavior:
                                 ScrollViewKeyboardDismissBehavior.onDrag,
                             itemBuilder: (context, index) {
