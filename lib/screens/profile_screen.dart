@@ -9,10 +9,8 @@ import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/screens/auth/login_screen.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/media_viewer_screen.dart';
-import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
-import 'package:chatty/widgets/chat_wallpaper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -722,114 +720,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             // ─────────────────────────────────────────────────────────────
-            // Card 2: Chat Settings (Wallpaper, Theme, Visuals)
+            // Card 2: Appearance & Theme
             // ─────────────────────────────────────────────────────────────
             _buildGroupCard(
               context: context,
-              headerTitle: 'Chat Settings',
+              headerTitle: 'Appearance',
               children: [
-                // Chat Wallpaper tile with active preview thumbnail
-                ValueListenableBuilder<String>(
-                  valueListenable:
-                      ChatSettingsController.wallpaperThemeNotifier,
-                  builder: (context, currentTheme, _) {
-                    final currentPreset = ChatWallpaper.presets.firstWhere(
-                      (p) => p['id'] == currentTheme,
-                      orElse: () => ChatWallpaper.presets.first,
-                    );
-
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      leading: _buildIconBadge(
-                        context: context,
-                        icon: Icons.wallpaper_rounded,
-                      ),
-                      title: Text(
-                        'Chat Wallpaper',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: context.textPrimaryColor,
-                        ),
-                      ),
-                      subtitle: Text(
-                        currentPreset['name'] ?? 'Custom',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 11,
-                          color: context.textMutedColor,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          WallpaperThumbnail(
-                            presetId: currentTheme,
-                            isSelected: true,
-                            width: 32,
-                            height: 42,
-                            showChatBubbles: false,
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 20,
-                            color: context.chevronColor,
-                          ),
-                        ],
-                      ),
-                      onTap: () => ChatWallpaper.showWallpaperPicker(context),
-                    );
-                  },
-                ),
-                _buildDivider(context),
-
-                // Inline Horizontal Wallpaper Selector Strip
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Quick Wallpaper Presets',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: context.textMutedColor,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ValueListenableBuilder<String>(
-                        valueListenable:
-                            ChatSettingsController.wallpaperThemeNotifier,
-                        builder: (context, currentTheme, _) {
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: ChatWallpaper.presets.map((preset) {
-                              final id = preset['id']!;
-                              final isSelected = currentTheme == id;
-                              return WallpaperThumbnail(
-                                presetId: id,
-                                isSelected: isSelected,
-                                width: (MediaQuery.sizeOf(context).width - 80) / 4,
-                                height: 68,
-                                showChatBubbles: true,
-                                onTap: () {
-                                  ChatSettingsController.setWallpaperTheme(id);
-                                },
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                _buildDivider(context),
-
                 // Theme Mode 3-Way Segmented Control (System / Light / Dark)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

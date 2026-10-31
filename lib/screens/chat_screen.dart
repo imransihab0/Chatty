@@ -13,7 +13,6 @@ import '../helper/my_date_util.dart';
 import '../models/chat_user.dart';
 import '../models/message.dart';
 import '../widgets/chat_voice_input_bar.dart';
-import '../widgets/chat_wallpaper.dart';
 import '../widgets/message_card.dart';
 import '../widgets/shimmer_skeleton.dart';
 import '../widgets/typing_wave_dots.dart';
@@ -545,10 +544,9 @@ class _ChatScreenState extends State<ChatScreen> {
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusScope.of(context).unfocus(),
-          child: ChatWallpaper(
-            child: Column(
-              children: [
-            _buildSearchStepperBar(),
+          child: Column(
+            children: [
+              _buildSearchStepperBar(),
             Expanded(
               child: StreamBuilder(
                 stream: APIs.getAllMessages(widget.user),
@@ -765,7 +763,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     ),
   ),
-),
 );
 }
 
@@ -980,32 +977,11 @@ class _ChatScreenState extends State<ChatScreen> {
               color: context.surfaceColor,
               elevation: 4,
               onSelected: (val) {
-                if (val == 'wallpaper') {
-                  ChatWallpaper.showWallpaperPicker(context);
-                } else if (val == 'info') {
+                if (val == 'info') {
                   _showUserProfileDialog(currentUser);
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'wallpaper',
-                  child: Row(
-                    children: [
-                      Icon(Icons.palette_outlined,
-                          size: 20, color: context.textPrimaryColor),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Chat Wallpaper',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          color: context.textPrimaryColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 PopupMenuItem(
                   value: 'info',
                   child: Row(
