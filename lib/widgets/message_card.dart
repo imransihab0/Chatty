@@ -484,6 +484,7 @@ class _MessageCardState extends State<MessageCard> {
                         AudioWaveformPlayer(
                           isMe: false,
                           audioUrl: widget.message.msg,
+                          durationMs: widget.message.durationMs,
                         )
                       else
                         GestureDetector(
@@ -672,6 +673,7 @@ class _MessageCardState extends State<MessageCard> {
                         AudioWaveformPlayer(
                           isMe: true,
                           audioUrl: widget.message.msg,
+                          durationMs: widget.message.durationMs,
                         )
                       else
                         GestureDetector(

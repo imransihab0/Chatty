@@ -11,6 +11,7 @@ import '../helper/dialogs.dart';
 import '../helper/my_date_util.dart';
 import '../models/chat_user.dart';
 import '../models/message.dart';
+import '../services/voice_recorder_service.dart';
 import '../widgets/chat_wallpaper.dart';
 import '../widgets/message_card.dart';
 import '../widgets/shimmer_skeleton.dart';
@@ -26,7 +27,8 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen>
+    with TickerProviderStateMixin {
   List<Message> _list = [];
   final _textController = TextEditingController();
   final _searchController = TextEditingController();
@@ -37,16 +39,55 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _typingTimer;
   bool _isTyping = false;
 
-  // Voice note recording states
+  // ── Voice note recording states ──
   bool _isRecording = false;
+  bool _isRecordingLocked = false; // swipe-up lock mode
+  bool _isSendingVoice = false;
   int _recordSeconds = 0;
   Timer? _recordTimer;
-  double _recordingDragOffset = 0.0;
+  double _dragOffsetX = 0.0; // horizontal slide-to-cancel
+  double _dragOffsetY = 0.0; // vertical swipe-up-to-lock
+  bool _cancelThresholdCrossed = false;
+  List<double> _liveAmplitudes = []; // rolling waveform amplitudes
+  StreamSubscription<double>? _amplitudeSub;
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+  late final AnimationController _trashScaleController;
+  late final Animation<double> _trashScaleAnimation;
+
+  final VoiceRecorderService _voiceRecorder = VoiceRecorderService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Pulsing red dot animation
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _pulseAnimation = Tween<double>(begin: 0.35, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Trash icon scale-up animation
+    _trashScaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _trashScaleAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
+      CurvedAnimation(
+          parent: _trashScaleController, curve: Curves.elasticOut),
+    );
+  }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
     _recordTimer?.cancel();
+    _amplitudeSub?.cancel();
+    _pulseController.dispose();
+    _trashScaleController.dispose();
     if (_isTyping) {
       APIs.updateTypingStatus(widget.user, false);
     }
@@ -814,7 +855,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 Text(
                   _replyMessage!.type == Type.text
                       ? _replyMessage!.msg
-                      : '📷 Photo',
+                      : _replyMessage!.type == Type.audio
+                          ? '🎙️ Voice note'
+                          : '📷 Photo',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -837,64 +880,337 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // Voice Note Recording HUD
+  // ── Voice Recording: Start ──
+  Future<void> _startRecording() async {
+    final started = await _voiceRecorder.startRecording();
+    if (!started) {
+      if (mounted) {
+        Dialogs.showSnackbar(context, 'Microphone permission required');
+      }
+      return;
+    }
+
+    AppHaptics.medium();
+    _pulseController.repeat(reverse: true);
+
+    // Subscribe to live amplitude for waveform
+    _amplitudeSub?.cancel();
+    _liveAmplitudes = [];
+    _amplitudeSub = _voiceRecorder.amplitudeStream.listen((amp) {
+      if (mounted) {
+        setState(() {
+          _liveAmplitudes.add(amp);
+          // Keep only the last 40 samples for the visible strip
+          if (_liveAmplitudes.length > 40) {
+            _liveAmplitudes.removeAt(0);
+          }
+        });
+      }
+    });
+
+    setState(() {
+      _isRecording = true;
+      _isRecordingLocked = false;
+      _recordSeconds = 0;
+      _dragOffsetX = 0.0;
+      _dragOffsetY = 0.0;
+      _cancelThresholdCrossed = false;
+    });
+
+    _recordTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (t) {
+        if (mounted) setState(() => _recordSeconds++);
+      },
+    );
+  }
+
+  // ── Voice Recording: Stop & Send ──
+  Future<void> _stopAndSendRecording() async {
+    _recordTimer?.cancel();
+    _amplitudeSub?.cancel();
+    _pulseController.stop();
+    _pulseController.reset();
+
+    if (_recordSeconds < 1) {
+      await _voiceRecorder.cancelRecording();
+      setState(() {
+        _isRecording = false;
+        _isRecordingLocked = false;
+      });
+      if (mounted) {
+        Dialogs.showSnackbar(context, 'Hold longer to record voice note');
+      }
+      return;
+    }
+
+    setState(() {
+      _isSendingVoice = true;
+    });
+
+    final result = await _voiceRecorder.stopRecording();
+    final durationMs = _recordSeconds * 1000;
+
+    setState(() {
+      _isRecording = false;
+      _isRecordingLocked = false;
+    });
+
+    if (result != null) {
+      AppHaptics.medium();
+      final file = File(result.path);
+      final success =
+          await APIs.sendVoiceNote(widget.user, file, durationMs);
+      if (!success && mounted) {
+        Dialogs.showSnackbar(context, 'Failed to send voice note');
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isSendingVoice = false);
+    }
+  }
+
+  // ── Voice Recording: Cancel ──
+  Future<void> _cancelRecording() async {
+    _recordTimer?.cancel();
+    _amplitudeSub?.cancel();
+    _pulseController.stop();
+    _pulseController.reset();
+    _trashScaleController.reset();
+
+    await _voiceRecorder.cancelRecording();
+
+    AppHaptics.light();
+    setState(() {
+      _isRecording = false;
+      _isRecordingLocked = false;
+      _cancelThresholdCrossed = false;
+    });
+
+    if (mounted) {
+      Dialogs.showSnackbar(context, 'Recording cancelled');
+    }
+  }
+
+  // ── Recording HUD: Live waveform with pulsing dot ──
   Widget _buildRecordingHUD() {
-    final bool isCancelling = _recordingDragOffset < -70;
     final int minutes = _recordSeconds ~/ 60;
     final int seconds = _recordSeconds % 60;
     final String timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: const BoxDecoration(
-              color: Colors.red,
-              shape: BoxShape.circle,
+          // Pulsing red dot
+          FadeTransition(
+            opacity: _pulseAnimation,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
+
+          // Timer
           Text(
             timeStr,
             style: TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
               color: context.textPrimaryColor,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
+
+          // Live waveform strip
           Expanded(
-            child: Transform.translate(
-              offset: Offset(_recordingDragOffset * 0.35, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(
-                    isCancelling
-                        ? Icons.delete_outline_rounded
-                        : Icons.chevron_left_rounded,
-                    size: 18,
-                    color:
-                        isCancelling ? AppTheme.danger : context.textMutedColor,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    isCancelling ? 'Release to cancel' : 'Slide to cancel',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight:
-                          isCancelling ? FontWeight.w700 : FontWeight.w500,
-                      color: isCancelling
+            child: SizedBox(
+              height: 26,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  const barWidth = 2.6;
+                  final maxBars = (width / (barWidth + 2)).floor();
+                  final visibleAmps = _liveAmplitudes.length > maxBars
+                      ? _liveAmplitudes.sublist(
+                          _liveAmplitudes.length - maxBars)
+                      : _liveAmplitudes;
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: List.generate(
+                      visibleAmps.length,
+                      (i) {
+                        final h = 3.0 + visibleAmps[i] * 21.0;
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 1.8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 60),
+                            curve: Curves.easeOut,
+                            width: barWidth,
+                            height: h,
+                            decoration: BoxDecoration(
+                              color: context.textPrimaryColor
+                                  .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(1.5),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // Slide-to-cancel hint (only in non-locked mode)
+          if (!_isRecordingLocked) ...[
+            const SizedBox(width: 10),
+            Transform.translate(
+              offset: Offset(_dragOffsetX * 0.3, 0),
+              child: Opacity(
+                opacity: (1.0 + _dragOffsetX / 120).clamp(0.3, 1.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _cancelThresholdCrossed
+                          ? Icons.delete_rounded
+                          : Icons.chevron_left_rounded,
+                      size: 16,
+                      color: _cancelThresholdCrossed
                           ? AppTheme.danger
                           : context.textMutedColor,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 2),
+                    Text(
+                      _cancelThresholdCrossed
+                          ? 'Release to cancel'
+                          : 'Slide to cancel',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        fontWeight: _cancelThresholdCrossed
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        color: _cancelThresholdCrossed
+                            ? AppTheme.danger
+                            : context.textMutedColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Locked Recording HUD: Stop + Send buttons ──
+  Widget _buildLockedRecordingHUD() {
+    final int minutes = _recordSeconds ~/ 60;
+    final int seconds = _recordSeconds % 60;
+    final String timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          // Pulsing red dot
+          FadeTransition(
+            opacity: _pulseAnimation,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Timer
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimaryColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Live waveform strip (smaller in locked mode)
+          Expanded(
+            child: SizedBox(
+              height: 26,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  const barWidth = 2.6;
+                  final maxBars = (width / (barWidth + 2)).floor();
+                  final visibleAmps = _liveAmplitudes.length > maxBars
+                      ? _liveAmplitudes.sublist(
+                          _liveAmplitudes.length - maxBars)
+                      : _liveAmplitudes;
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: List.generate(
+                      visibleAmps.length,
+                      (i) {
+                        final h = 3.0 + visibleAmps[i] * 21.0;
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 1.8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 60),
+                            curve: Curves.easeOut,
+                            width: barWidth,
+                            height: h,
+                            decoration: BoxDecoration(
+                              color: context.textPrimaryColor
+                                  .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(1.5),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Cancel (trash) button
+          GestureDetector(
+            onTap: _cancelRecording,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.danger.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppTheme.danger,
+                size: 20,
               ),
             ),
           ),
@@ -979,7 +1295,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final replyMsg = _replyMessage != null
         ? (_replyMessage!.type == Type.text
             ? _replyMessage!.msg
-            : '📷 Photo')
+            : _replyMessage!.type == Type.audio
+                ? '🎙️ Voice note'
+                : '📷 Photo')
         : '';
     final replyUser = _replyMessage != null
         ? (_replyMessage!.fromId == APIs.user.uid ? 'You' : widget.user.name)
@@ -1003,7 +1321,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _replyMessage = null);
   }
 
-  // Modern Floating Input Bar with Hold-to-Record Voice Notes
+  // Modern Floating Input Bar with Telegram-Style Voice Notes
   Widget _chatInput() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
@@ -1013,6 +1331,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
                 color: _isRecording
                     ? (context.isDark
@@ -1022,120 +1341,254 @@ class _ChatScreenState extends State<ChatScreen> {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: _isRecording
-                      ? (_recordingDragOffset < -70
+                      ? (_cancelThresholdCrossed
                           ? AppTheme.danger
-                          : context.textPrimaryColor)
+                          : context.textPrimaryColor.withValues(alpha: 0.3))
                       : context.borderColor,
                   width: _isRecording ? 1.5 : 1,
                 ),
                 boxShadow: context.softShadow,
               ),
-              child: _isRecording ? _buildRecordingHUD() : _buildTextInputRow(),
+              child: _isRecording
+                  ? (_isRecordingLocked
+                      ? _buildLockedRecordingHUD()
+                      : _buildRecordingHUD())
+                  : _buildTextInputRow(),
             ),
           ),
           const SizedBox(width: 10),
 
-          // Dynamic Send / Mic Voice Action Button with Hold-to-Record
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _textController,
-            builder: (context, value, _) {
-              final bool hasText = value.text.trim().isNotEmpty;
+          // ── Dynamic Send / Mic / Lock / Stop Button ──
+          _buildActionButton(),
+        ],
+      ),
+    );
+  }
 
-              return GestureDetector(
-                onTap: () {
-                  if (hasText) {
-                    _sendTextMessage();
-                  } else {
-                    Dialogs.showSnackbar(
-                        context, 'Hold to record, release to send');
+  Widget _buildActionButton() {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _textController,
+      builder: (context, value, _) {
+        final bool hasText = value.text.trim().isNotEmpty;
+
+        // ── Locked mode: show Send button ──
+        if (_isRecordingLocked) {
+          return GestureDetector(
+            onTap: _isSendingVoice ? null : _stopAndSendRecording,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _isSendingVoice
+                    ? context.surfaceMutedColor
+                    : (context.isDark ? Colors.white : Colors.black),
+                shape: BoxShape.circle,
+                boxShadow: context.isDark ? null : AppTheme.buttonShadow,
+              ),
+              child: Center(
+                child: _isSendingVoice
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              context.textPrimaryColor),
+                        ),
+                      )
+                    : Icon(
+                        Icons.arrow_upward_rounded,
+                        color:
+                            context.isDark ? Colors.black : Colors.white,
+                        size: 24,
+                      ),
+              ),
+            ),
+          );
+        }
+
+        // ── Recording (not locked): hold-to-record mic button ──
+        if (_isRecording) {
+          return GestureDetector(
+            onLongPressMoveUpdate: (details) {
+              final dx =
+                  details.offsetFromOrigin.dx.clamp(-160.0, 0.0);
+              final dy =
+                  details.offsetFromOrigin.dy.clamp(-120.0, 0.0);
+
+              final wasCrossed = _cancelThresholdCrossed;
+              final nowCrossed = dx < -80;
+
+              if (nowCrossed && !wasCrossed) {
+                AppHaptics.heavy();
+                _trashScaleController.forward();
+              } else if (!nowCrossed && wasCrossed) {
+                _trashScaleController.reverse();
+              }
+
+              setState(() {
+                _dragOffsetX = dx;
+                _dragOffsetY = dy;
+                _cancelThresholdCrossed = nowCrossed;
+              });
+
+              // Swipe up to lock threshold
+              if (dy < -60 && !_isRecordingLocked) {
+                AppHaptics.medium();
+                setState(() => _isRecordingLocked = true);
+              }
+            },
+            onLongPressEnd: (details) {
+              if (_isRecordingLocked) return; // already locked, handled by buttons
+
+              if (_cancelThresholdCrossed) {
+                _cancelRecording();
+              } else {
+                _stopAndSendRecording();
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOutCubic,
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: _cancelThresholdCrossed
+                    ? AppTheme.danger
+                    : (context.isDark ? Colors.white : Colors.black),
+                shape: BoxShape.circle,
+                boxShadow: context.isDark ? null : AppTheme.buttonShadow,
+              ),
+              child: Center(
+                child: _cancelThresholdCrossed
+                    ? ScaleTransition(
+                        scale: _trashScaleAnimation,
+                        child: const Icon(
+                          Icons.delete_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      )
+                    : (_dragOffsetY < -30
+                        ? Icon(
+                            Icons.lock_rounded,
+                            color: context.isDark
+                                ? Colors.black
+                                : Colors.white,
+                            size: 22,
+                          )
+                        : Icon(
+                            Icons.mic_rounded,
+                            color: context.isDark
+                                ? Colors.black
+                                : Colors.white,
+                            size: 26,
+                          )),
+              ),
+            ),
+          );
+        }
+
+        // ── Default: Send (text) or Mic (empty) button ──
+        return GestureDetector(
+          onTap: () {
+            if (hasText) {
+              _sendTextMessage();
+            } else {
+              Dialogs.showSnackbar(
+                  context, 'Hold to record, slide up to lock');
+            }
+          },
+          onLongPressStart: hasText
+              ? null
+              : (details) {
+                  _startRecording();
+                },
+          onLongPressMoveUpdate: hasText
+              ? null
+              : (details) {
+                  if (!_isRecording) return;
+                  final dx =
+                      details.offsetFromOrigin.dx.clamp(-160.0, 0.0);
+                  final dy =
+                      details.offsetFromOrigin.dy.clamp(-120.0, 0.0);
+
+                  final wasCrossed = _cancelThresholdCrossed;
+                  final nowCrossed = dx < -80;
+
+                  if (nowCrossed && !wasCrossed) {
+                    AppHaptics.heavy();
+                    _trashScaleController.forward();
+                  } else if (!nowCrossed && wasCrossed) {
+                    _trashScaleController.reverse();
+                  }
+
+                  setState(() {
+                    _dragOffsetX = dx;
+                    _dragOffsetY = dy;
+                    _cancelThresholdCrossed = nowCrossed;
+                  });
+
+                  // Swipe up to lock
+                  if (dy < -60 && !_isRecordingLocked) {
+                    AppHaptics.medium();
+                    setState(() => _isRecordingLocked = true);
                   }
                 },
-                onLongPressStart: hasText
-                    ? null
-                    : (details) {
-                        AppHaptics.medium();
-                        setState(() {
-                          _isRecording = true;
-                          _recordSeconds = 0;
-                          _recordingDragOffset = 0.0;
-                        });
-                        _recordTimer = Timer.periodic(
-                          const Duration(seconds: 1),
-                          (t) => setState(() => _recordSeconds++),
-                        );
-                      },
-                onLongPressMoveUpdate: hasText
-                    ? null
-                    : (details) {
-                        setState(() {
-                          _recordingDragOffset =
-                              details.offsetFromOrigin.dx.clamp(-160.0, 0.0);
-                        });
-                      },
-                onLongPressEnd: hasText
-                    ? null
-                    : (details) {
-                        _recordTimer?.cancel();
-                        final bool cancelled = _recordingDragOffset < -70;
+          onLongPressEnd: hasText
+              ? null
+              : (details) {
+                  if (!_isRecording) return;
+                  if (_isRecordingLocked) return;
 
-                        if (cancelled) {
-                          AppHaptics.light();
-                          Dialogs.showSnackbar(context, 'Recording cancelled');
-                        } else if (_recordSeconds < 1) {
-                          Dialogs.showSnackbar(
-                              context, 'Hold longer to record voice note');
-                        } else {
-                          AppHaptics.medium();
-                          APIs.sendMessage(
-                            widget.user,
-                            'https://chatty.audio/note_${DateTime.now().millisecondsSinceEpoch}.m4a',
-                            Type.audio,
-                          );
-                          Dialogs.showSnackbar(context, 'Voice note sent!');
-                        }
-
-                        setState(() {
-                          _isRecording = false;
-                          _recordingDragOffset = 0.0;
-                          _recordSeconds = 0;
-                        });
-                      },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: _isRecording ? 54 : 48,
-                  height: _isRecording ? 54 : 48,
-                  decoration: BoxDecoration(
-                    color: _isRecording
-                        ? (_recordingDragOffset < -70
-                            ? AppTheme.danger
-                            : (context.isDark ? Colors.white : Colors.black))
-                        : (context.isDark ? Colors.white : Colors.black),
-                    shape: BoxShape.circle,
-                    boxShadow: context.isDark ? null : AppTheme.buttonShadow,
-                  ),
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      transitionBuilder: (child, anim) =>
-                          ScaleTransition(scale: anim, child: child),
-                      child: Icon(
+                  if (_cancelThresholdCrossed) {
+                    _cancelRecording();
+                  } else {
+                    _stopAndSendRecording();
+                  }
+                },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: context.isDark ? Colors.white : Colors.black,
+              shape: BoxShape.circle,
+              boxShadow: context.isDark ? null : AppTheme.buttonShadow,
+            ),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: _isSendingVoice
+                    ? SizedBox(
+                        key: const ValueKey('sending'),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            context.isDark ? Colors.black : Colors.white,
+                          ),
+                        ),
+                      )
+                    : Icon(
                         hasText
                             ? Icons.arrow_upward_rounded
                             : Icons.mic_rounded,
                         key: ValueKey(hasText ? 'send' : 'mic'),
-                        color: _isRecording && _recordingDragOffset < -70
-                            ? Colors.white
-                            : (context.isDark ? Colors.black : Colors.white),
-                        size: _isRecording ? 26 : 24,
+                        color: context.isDark
+                            ? Colors.black
+                            : Colors.white,
+                        size: 24,
                       ),
-                    ),
-                  ),
-                ),
-              );
-            },
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -269,6 +269,53 @@ class APIs{
     }
   }
 
+  // send voice note
+  static Future<bool> sendVoiceNote(
+      ChatUser chatUser, File audioFile, int durationMs) async {
+    try {
+      final ext = audioFile.path.split('.').last;
+      log('Voice note extension: $ext');
+      final ref = storage.ref().child(
+          'audio/${getConversationID(chatUser.id)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
+      final p0 = await ref.putFile(
+          audioFile, SettableMetadata(contentType: 'audio/$ext'));
+      log('Voice note uploaded: ${p0.bytesTransferred / 1000}kb');
+      final audioUrl = await ref.getDownloadURL();
+
+      // Send as audio message with duration stored in Firestore
+      if (auth.currentUser == null) return false;
+      final time = DateTime.now().millisecondsSinceEpoch.toString();
+      final Message message = Message(
+        toId: chatUser.id,
+        msg: audioUrl,
+        read: '',
+        type: Type.audio,
+        sent: time,
+        fromId: user.uid,
+        durationMs: durationMs,
+      );
+
+      final convoId = getConversationID(chatUser.id);
+      final msgRef = firestore.collection('chats/$convoId/messages/');
+      await msgRef.doc(time).set(message.toJson());
+
+      await firestore.collection('chats').doc(convoId).set({
+        'last_message_time': time,
+        'last_message': '🎙️ Voice note',
+        'last_message_type': Type.audio.name,
+        'last_from_id': user.uid,
+      }, SetOptions(merge: true));
+
+      ConversationController.updateLastMessageTime(
+          chatUser.id, int.parse(time));
+
+      return true;
+    } catch (e) {
+      log('Error sendVoiceNote: $e');
+      return false;
+    }
+  }
+
   // delete message
   static Future<void> deleteMessage(Message message) async {
     try {

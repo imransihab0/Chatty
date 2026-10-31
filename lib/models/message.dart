@@ -9,6 +9,7 @@ class Message {
     this.reaction = '',
     this.replyMsg = '',
     this.replyUser = '',
+    this.durationMs = 0,
   });
   late final String toId;
   late final String msg;
@@ -19,6 +20,7 @@ class Message {
   late String reaction;
   late String replyMsg;
   late String replyUser;
+  late int durationMs;
 
   Message.fromJson(Map<String, dynamic> json){
     toId = json['toId']?.toString() ?? '';
@@ -36,6 +38,7 @@ class Message {
     reaction = json['reaction']?.toString() ?? '';
     replyMsg = json['reply_msg']?.toString() ?? '';
     replyUser = json['reply_user']?.toString() ?? '';
+    durationMs = (json['duration_ms'] as num?)?.toInt() ?? 0;
   }
 
   Map<String, dynamic> toJson() {
@@ -49,6 +52,7 @@ class Message {
     data['reaction'] = reaction;
     if (replyMsg.isNotEmpty) data['reply_msg'] = replyMsg;
     if (replyUser.isNotEmpty) data['reply_user'] = replyUser;
+    if (durationMs > 0) data['duration_ms'] = durationMs;
     return data;
   }
 }

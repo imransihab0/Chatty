@@ -36,6 +36,12 @@ dependencies:
   #for local path and persistence
   path_provider: ^2.1.1
 
+  #for audio recording (voice notes)
+  record: ^5.2.0
+
+  #for audio playback (voice notes)
+  just_audio: ^0.9.43
+
   # for using cupertino icons
   cupertino_icons: ^1.0.2
 

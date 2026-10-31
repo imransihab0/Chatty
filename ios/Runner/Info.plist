@@ -41,6 +41,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>App requires access to the camera for taking pictures.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Chatty needs microphone access to record voice notes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>App requires access to the photo library for taking pictures.</string>
 	<key>UIApplicationSceneManifest</key>

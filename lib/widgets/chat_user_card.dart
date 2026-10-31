@@ -396,7 +396,9 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                     _message != null
                                         ? _message!.type == Type.image
                                             ? '📷 Photo'
-                                            : _message!.msg
+                                            : _message!.type == Type.audio
+                                                ? '🎙️ Voice note'
+                                                : _message!.msg
                                         : currentUser.about,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
