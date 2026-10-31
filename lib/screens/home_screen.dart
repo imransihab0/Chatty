@@ -11,6 +11,7 @@ import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:chatty/widgets/chat_user_card.dart';
+import 'package:chatty/widgets/shimmer_skeleton.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -366,14 +367,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
               }
 
-              // Only show progress indicator on initial cold load before data arrives
-              return Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(context.textPrimaryColor),
-                ),
-              );
+              // Shimmer skeleton placeholders during initial cold load
+              return const HomeConversationSkeletonList();
             },
           ),
         ),

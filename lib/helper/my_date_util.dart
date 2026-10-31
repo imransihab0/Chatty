@@ -82,4 +82,63 @@ class MyDateUtil{
     return 'N/A';
   }
 
+  // Get conversational date header for chat timeline
+  static String getChatDateHeader(String timeMillis) {
+    final int millis = int.tryParse(timeMillis) ?? 0;
+    if (millis <= 0) return '';
+    final DateTime date = DateTime.fromMillisecondsSinceEpoch(millis);
+    final DateTime now = DateTime.now();
+
+    if (now.year == date.year && now.month == date.month && now.day == date.day) {
+      return 'Today';
+    }
+
+    final DateTime yesterday = now.subtract(const Duration(days: 1));
+    if (yesterday.year == date.year &&
+        yesterday.month == date.month &&
+        yesterday.day == date.day) {
+      return 'Yesterday';
+    }
+
+    if (now.difference(date).inDays < 7 && now.weekday > date.weekday) {
+      return _getWeekday(date.weekday);
+    }
+
+    final String month = _getMonth(date);
+    if (now.year == date.year) {
+      return '${date.day} $month';
+    }
+    return '${date.day} $month ${date.year}';
+  }
+
+  static String _getWeekday(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'Monday';
+      case 2:
+        return 'Tuesday';
+      case 3:
+        return 'Wednesday';
+      case 4:
+        return 'Thursday';
+      case 5:
+        return 'Friday';
+      case 6:
+        return 'Saturday';
+      case 7:
+        return 'Sunday';
+      default:
+        return '';
+    }
+  }
+
+  // Check if two timestamps fall on different calendar days
+  static bool isDifferentDay(String timeA, String timeB) {
+    final int a = int.tryParse(timeA) ?? 0;
+    final int b = int.tryParse(timeB) ?? 0;
+    if (a <= 0 || b <= 0) return true;
+    final dtA = DateTime.fromMillisecondsSinceEpoch(a);
+    final dtB = DateTime.fromMillisecondsSinceEpoch(b);
+    return dtA.year != dtB.year || dtA.month != dtB.month || dtA.day != dtB.day;
+  }
 }

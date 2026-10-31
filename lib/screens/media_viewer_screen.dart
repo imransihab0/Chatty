@@ -24,6 +24,8 @@ class MediaViewerScreen extends StatefulWidget {
 class _MediaViewerScreenState extends State<MediaViewerScreen>
     with SingleTickerProviderStateMixin {
   late TransformationController _transformController;
+  late AnimationController _springController;
+  Animation<double>? _springAnimation;
   TapDownDetails? _doubleTapDetails;
   bool _showControls = true;
   double _dragOffset = 0.0;
@@ -32,12 +34,28 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
   void initState() {
     super.initState();
     _transformController = TransformationController();
+    _springController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    )..addListener(() {
+        if (_springAnimation != null) {
+          setState(() => _dragOffset = _springAnimation!.value);
+        }
+      });
   }
 
   @override
   void dispose() {
     _transformController.dispose();
+    _springController.dispose();
     super.dispose();
+  }
+
+  void _springBack() {
+    _springAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+      CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic),
+    );
+    _springController.forward(from: 0.0);
   }
 
   void _handleDoubleTapDown(TapDownDetails details) {
@@ -57,13 +75,15 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
 
   @override
   Widget build(BuildContext context) {
-    final double opacity = (1.0 - (_dragOffset.abs() / 300)).clamp(0.0, 1.0);
+    final double opacity = (1.0 - (_dragOffset.abs() / 320)).clamp(0.0, 1.0);
+    final double scale = (1.0 - (_dragOffset.abs() / 900)).clamp(0.76, 1.0);
+    final bool isDragging = _dragOffset.abs() > 15;
 
     return Scaffold(
       backgroundColor: Colors.black.withValues(alpha: opacity),
       body: Stack(
         children: [
-          // Interactive Zoomable Photo with Drag-to-Dismiss
+          // Interactive Zoomable Photo with Smooth Physics Drag-to-Dismiss
           GestureDetector(
             onTap: () => setState(() => _showControls = !_showControls),
             onDoubleTapDown: _handleDoubleTapDown,
@@ -76,47 +96,51 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
               }
             },
             onVerticalDragEnd: (details) {
-              if (_dragOffset.abs() > 100) {
+              final velocity = details.primaryVelocity?.abs() ?? 0;
+              if (_dragOffset.abs() > 110 || velocity > 750) {
                 Navigator.of(context).pop();
               } else {
-                setState(() => _dragOffset = 0.0);
+                _springBack();
               }
             },
             child: Transform.translate(
               offset: Offset(0, _dragOffset),
-              child: Center(
-                child: InteractiveViewer(
-                  transformationController: _transformController,
-                  minScale: 0.8,
-                  maxScale: 4.0,
-                  clipBehavior: Clip.none,
-                  child: Hero(
-                    tag: widget.heroTag,
-                    child: CachedNetworkImage(
-                      imageUrl: widget.imageUrl,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.broken_image_rounded,
-                              size: 56, color: Colors.white54),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Failed to load high-resolution image',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 14,
-                            ),
+              child: Transform.scale(
+                scale: scale,
+                child: Center(
+                  child: InteractiveViewer(
+                    transformationController: _transformController,
+                    minScale: 0.8,
+                    maxScale: 4.0,
+                    clipBehavior: Clip.none,
+                    child: Hero(
+                      tag: widget.heroTag,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrl,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
-                        ],
+                        ),
+                        errorWidget: (context, url, error) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.broken_image_rounded,
+                                size: 56, color: Colors.white54),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Failed to load high-resolution image',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -125,10 +149,10 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
             ),
           ),
 
-          // Top App Bar Controls
+          // Top App Bar Controls (Hidden while dragging)
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 250),
-            top: _showControls ? 0 : -100,
+            duration: const Duration(milliseconds: 200),
+            top: (_showControls && !isDragging) ? 0 : -100,
             left: 0,
             right: 0,
             child: Container(

@@ -30,51 +30,128 @@ class MessageCard extends StatefulWidget {
 }
 
 class _MessageCardState extends State<MessageCard> {
+  void _showEditMessageDialog() {
+    String updatedMsg = widget.message.msg;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: context.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Edit Message',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: context.textPrimaryColor,
+          ),
+        ),
+        content: TextFormField(
+          initialValue: updatedMsg,
+          maxLines: null,
+          autofocus: true,
+          onChanged: (val) => updatedMsg = val,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            color: context.textPrimaryColor,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Enter updated message...',
+            hintStyle: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: context.textMutedColor,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: context.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: context.textPrimaryColor, width: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: context.textSecondaryColor,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.isDark ? Colors.white : Colors.black,
+              foregroundColor: context.isDark ? Colors.black : Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              final trimmed = updatedMsg.trim();
+              if (trimmed.isNotEmpty && trimmed != widget.message.msg) {
+                AppHaptics.medium();
+                await APIs.updateMessage(widget.message, trimmed);
+                if (mounted) {
+                  Dialogs.showSnackbar(context, 'Message updated');
+                }
+              }
+            },
+            child: const Text('Save',
+                style:
+                    TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMessageOptions() {
     AppHaptics.medium();
     final bool isMe = APIs.user.uid == widget.message.fromId;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: context.surfaceColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) {
-        return Material(
-          color: Colors.transparent,
-          child: SafeArea(
-            child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Floating Quick Reaction Emoji Capsule (Telegram / iOS Style)
                 Container(
-                  width: 40,
-                  height: 4,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: context.borderColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Floating Emoji Reaction Bar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: context.surfaceMutedColor,
-                    borderRadius: BorderRadius.circular(24),
+                    color: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(28),
                     border: Border.all(color: context.borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                            alpha: context.isDark ? 0.35 : 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: ['❤️', '👍', '😂', '😮', '😢', '🔥'].map((emoji) {
+                    children:
+                        ['❤️', '👍', '😂', '😮', '😢', '🔥', '🙏'].map((emoji) {
                       final bool isSelected = widget.message.reaction == emoji;
                       return InkWell(
                         borderRadius: BorderRadius.circular(20),
                         onTap: () {
-                          AppHaptics.light();
+                          AppHaptics.selection();
                           Navigator.pop(context);
                           APIs.setMessageReaction(widget.message, emoji);
                         },
@@ -103,71 +180,117 @@ class _MessageCardState extends State<MessageCard> {
                     }).toList(),
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Reply Action
-                ListTile(
-                  leading: Icon(Icons.reply_rounded, color: context.textPrimaryColor),
-                  title: Text(
-                    'Reply',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: context.textPrimaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+                const SizedBox(height: 10),
+
+                // Clean Contextual Actions Card
+                Container(
+                  decoration: BoxDecoration(
+                    color: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: context.borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                            alpha: context.isDark ? 0.35 : 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  onTap: () {
-                    AppHaptics.light();
-                    Navigator.pop(context);
-                    if (widget.onSwipeReply != null) {
-                      widget.onSwipeReply!(widget.message);
-                    }
-                  },
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.reply_rounded,
+                            color: context.textPrimaryColor),
+                        title: Text(
+                          'Reply',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            color: context.textPrimaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        onTap: () {
+                          AppHaptics.light();
+                          Navigator.pop(context);
+                          if (widget.onSwipeReply != null) {
+                            widget.onSwipeReply!(widget.message);
+                          }
+                        },
+                      ),
+                      if (widget.message.type == Type.text) ...[
+                        Divider(height: 1, color: context.borderColor),
+                        ListTile(
+                          leading: Icon(Icons.copy_rounded,
+                              color: context.textPrimaryColor),
+                          title: Text(
+                            'Copy Text',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: context.textPrimaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onTap: () {
+                            AppHaptics.light();
+                            Navigator.pop(context);
+                            Clipboard.setData(
+                                ClipboardData(text: widget.message.msg));
+                            Dialogs.showSnackbar(
+                                context, 'Text copied to clipboard!');
+                          },
+                        ),
+                      ],
+                      if (isMe && widget.message.type == Type.text) ...[
+                        Divider(height: 1, color: context.borderColor),
+                        ListTile(
+                          leading: Icon(Icons.edit_rounded,
+                              color: context.textPrimaryColor),
+                          title: Text(
+                            'Edit Message',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: context.textPrimaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showEditMessageDialog();
+                          },
+                        ),
+                      ],
+                      if (isMe) ...[
+                        Divider(height: 1, color: context.borderColor),
+                        ListTile(
+                          leading: const Icon(Icons.delete_outline_rounded,
+                              color: AppTheme.danger),
+                          title: const Text(
+                            'Delete Message',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              color: AppTheme.danger,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onTap: () async {
+                            AppHaptics.heavy();
+                            Navigator.pop(context);
+                            await APIs.deleteMessage(widget.message);
+                            if (mounted) {
+                              Dialogs.showSnackbar(context, 'Message deleted');
+                            }
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                if (widget.message.type == Type.text)
-                  ListTile(
-                    leading: Icon(Icons.copy_rounded, color: context.textPrimaryColor),
-                    title: Text(
-                      'Copy Text',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      AppHaptics.light();
-                      Navigator.pop(context);
-                      Clipboard.setData(ClipboardData(text: widget.message.msg));
-                      Dialogs.showSnackbar(context, 'Text copied to clipboard!');
-                    },
-                  ),
-                if (isMe)
-                  ListTile(
-                    leading: const Icon(Icons.delete_outline_rounded,
-                        color: AppTheme.danger),
-                    title: const Text(
-                      'Delete Message',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        color: AppTheme.danger,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () async {
-                      AppHaptics.heavy();
-                      Navigator.pop(context);
-                      await APIs.deleteMessage(widget.message);
-                      if (mounted) {
-                        Dialogs.showSnackbar(context, 'Message deleted');
-                      }
-                    },
-                  ),
               ],
             ),
           ),
-        ),
-      );
-    },
+        );
+      },
     );
   }
 
@@ -383,42 +506,74 @@ class _MessageCardState extends State<MessageCard> {
                             tag: 'msg_img_${widget.message.sent}',
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: CachedNetworkImage(
-                                imageUrl: widget.message.msg,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  height: 200,
-                                  width: double.infinity,
-                                  color: context.surfaceMutedColor,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                              child: Stack(
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: widget.message.msg,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      height: 200,
+                                      width: double.infinity,
+                                      color: context.surfaceMutedColor,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      height: 120,
+                                      width: double.infinity,
+                                      color: context.surfaceMutedColor,
+                                      child: Icon(Icons.broken_image,
+                                          size: 40,
+                                          color: context.textMutedColor),
+                                    ),
                                   ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  height: 120,
-                                  width: double.infinity,
-                                  color: context.surfaceMutedColor,
-                                  child: Icon(Icons.broken_image,
-                                      size: 40, color: context.textMutedColor),
-                                ),
+                                  Positioned(
+                                    bottom: 6,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.6),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        MyDateUtil.getFormattedTime(
+                                            context: context,
+                                            time: widget.message.sent),
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Text(
-                          MyDateUtil.getFormattedTime(
-                              context: context, time: widget.message.sent),
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 10,
-                            color: context.textMutedColor,
+                      if (widget.message.type != Type.image) ...[
+                        const SizedBox(height: 3),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Text(
+                            MyDateUtil.getFormattedTime(
+                                context: context, time: widget.message.sent),
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 10,
+                              color: context.textMutedColor,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -539,66 +694,126 @@ class _MessageCardState extends State<MessageCard> {
                             tag: 'msg_img_${widget.message.sent}',
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: CachedNetworkImage(
-                                imageUrl: widget.message.msg,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  height: 200,
-                                  width: double.infinity,
-                                  color: Colors.white24,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
+                              child: Stack(
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: widget.message.msg,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      height: 200,
+                                      width: double.infinity,
+                                      color: Colors.white24,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      height: 120,
+                                      width: double.infinity,
+                                      color: Colors.white24,
+                                      child: const Icon(Icons.broken_image,
+                                          size: 40, color: Colors.white70),
                                     ),
                                   ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  height: 120,
-                                  width: double.infinity,
-                                  color: Colors.white24,
-                                  child: const Icon(Icons.broken_image,
-                                      size: 40, color: Colors.white70),
-                                ),
+                                  Positioned(
+                                    bottom: 6,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.6),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            MyDateUtil.getFormattedTime(
+                                                context: context,
+                                                time: widget.message.sent),
+                                            style: const TextStyle(
+                                              fontFamily: 'Lexend',
+                                              fontSize: 10,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          AnimatedSwitcher(
+                                            duration: const Duration(
+                                                milliseconds: 300),
+                                            transitionBuilder: (child, anim) =>
+                                                ScaleTransition(
+                                                    scale: anim, child: child),
+                                            child: widget.message.read.isNotEmpty
+                                                ? const Icon(
+                                                    Icons.done_all_rounded,
+                                                    key: ValueKey('read'),
+                                                    color: Color(0xFF67E8F9),
+                                                    size: 13,
+                                                  )
+                                                : Icon(
+                                                    Icons.done_rounded,
+                                                    key: const ValueKey('sent'),
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.8),
+                                                    size: 13,
+                                                  ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            MyDateUtil.getFormattedTime(
-                                context: context, time: widget.message.sent),
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 10,
-                              color: Colors.white.withValues(alpha: 0.8),
+                      if (widget.message.type != Type.image) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              MyDateUtil.getFormattedTime(
+                                  context: context, time: widget.message.sent),
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 10,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            transitionBuilder: (child, anim) =>
-                                ScaleTransition(scale: anim, child: child),
-                            child: widget.message.read.isNotEmpty
-                                ? const Icon(
-                                    Icons.done_all_rounded,
-                                    key: ValueKey('read'),
-                                    color: Color(0xFF67E8F9),
-                                    size: 14,
-                                  )
-                                : Icon(
-                                    Icons.done_rounded,
-                                    key: const ValueKey('sent'),
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    size: 14,
-                                  ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 4),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, anim) =>
+                                  ScaleTransition(scale: anim, child: child),
+                              child: widget.message.read.isNotEmpty
+                                  ? const Icon(
+                                      Icons.done_all_rounded,
+                                      key: ValueKey('read'),
+                                      color: Color(0xFF67E8F9),
+                                      size: 14,
+                                    )
+                                  : Icon(
+                                      Icons.done_rounded,
+                                      key: const ValueKey('sent'),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.75),
+                                      size: 14,
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

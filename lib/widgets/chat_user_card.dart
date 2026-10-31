@@ -10,6 +10,7 @@ import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/conversation_controller.dart';
+import 'package:chatty/widgets/typing_wave_dots.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -130,14 +131,21 @@ class _ChatUserCardState extends State<ChatUserCard> {
 
     return Dismissible(
       key: Key('chat_card_${widget.user.id}'),
-      direction: DismissDirection.startToEnd,
+      direction: DismissDirection.horizontal,
       confirmDismiss: (direction) async {
-        AppHaptics.medium();
-        ChatSettingsController.togglePin(widget.user.id);
-        Dialogs.showSnackbar(
-          context,
-          isPinned ? 'Unpinned conversation' : 'Pinned to top',
-        );
+        if (direction == DismissDirection.startToEnd) {
+          // Swipe Right: Pin / Unpin
+          AppHaptics.medium();
+          ChatSettingsController.togglePin(widget.user.id);
+          Dialogs.showSnackbar(
+            context,
+            isPinned ? 'Unpinned conversation' : 'Pinned to top',
+          );
+        } else if (direction == DismissDirection.endToStart) {
+          // Swipe Left: Quick Options sheet
+          AppHaptics.medium();
+          _showChatOptions(isPinned, widget.user);
+        }
         return false;
       },
       background: Container(
@@ -164,6 +172,35 @@ class _ChatUserCardState extends State<ChatUserCard> {
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
+            ),
+          ],
+        ),
+      ),
+      secondaryBackground: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: context.isDark ? const Color(0xFF2C2C2C) : const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Options',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(
+              Icons.more_horiz_rounded,
+              color: Colors.white,
+              size: 22,
             ),
           ],
         ),
@@ -348,23 +385,10 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                       true;
 
                                   if (isTyping) {
-                                    return const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.edit_note_rounded,
-                                            size: 16,
-                                            color: AppTheme.success),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'typing...',
-                                          style: TextStyle(
-                                            fontFamily: 'Lexend',
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.success,
-                                          ),
-                                        ),
-                                      ],
+                                    return const TypingWaveDots(
+                                      dotSize: 4.5,
+                                      showLabel: true,
+                                      label: 'typing...',
                                     );
                                   }
 
