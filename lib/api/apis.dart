@@ -32,37 +32,73 @@ class APIs{
   static set me(ChatUser val) => _me = val;
 
   //to return current user
+  static User? get currentUser => auth.currentUser;
   static User get user => auth.currentUser!;
+
   //for checking if user exists or not?
   static Future<void> getMyInfo() async {
-    if (auth.currentUser == null) return;
-    await firestore.collection('users').doc(user.uid).get().then((user) async {
-
-      if(user.exists){
-        me = ChatUser.fromJson(user.data()!);
-        log('My Data: ${user.data()}');
-      }else{
-        await createUser().then((value) => getMyInfo());
+    final curUser = auth.currentUser;
+    if (curUser == null) return;
+    try {
+      final doc = await firestore.collection('users').doc(curUser.uid).get();
+      if (doc.exists && doc.data() != null) {
+        me = ChatUser.fromJson(doc.data()!);
+        log('My Data: ${doc.data()}');
+      } else {
+        await createUser();
+        await getMyInfo();
       }
-    });
+    } catch (e) {
+      log('Error getMyInfo: $e');
+    }
   }
 
   //for getting current user info
   static Future<bool> userExists() async {
-    if (auth.currentUser == null) return false;
-    return (await firestore.collection('users').doc(user.uid).get()).exists;
+    final curUser = auth.currentUser;
+    if (curUser == null) return false;
+    try {
+      final doc = await firestore.collection('users').doc(curUser.uid).get();
+      return doc.exists;
+    } catch (e) {
+      log('Error userExists: $e');
+      return false;
+    }
   }
 
   //for creating a new user
   static Future<void> createUser() async {
-    final time = DateTime.now().millisecondsSinceEpoch.toString();
-    final chatUser = ChatUser(image: user.photoURL.toString(), about: "Hey, I'm using Chatty!", name: user.displayName.toString(), createdAt: time, isOnline: false, lastActive: time, id: user.uid, email: user.email.toString(), pushToken: '');
-    return await firestore.collection('users').doc(user.uid).set(chatUser.toJson());
+    final curUser = auth.currentUser;
+    if (curUser == null) return;
+    try {
+      final time = DateTime.now().millisecondsSinceEpoch.toString();
+      final chatUser = ChatUser(
+        image: curUser.photoURL ?? '',
+        about: "Hey, I'm using Chatty!",
+        name: (curUser.displayName != null &&
+                curUser.displayName!.trim().isNotEmpty)
+            ? curUser.displayName!.trim()
+            : (curUser.email?.split('@').first ?? 'User'),
+        createdAt: time,
+        isOnline: true,
+        lastActive: time,
+        id: curUser.uid,
+        email: curUser.email ?? '',
+        pushToken: '',
+      );
+      await firestore.collection('users').doc(curUser.uid).set(chatUser.toJson());
+    } catch (e) {
+      log('Error createUser: $e');
+    }
   }
 
   // for getting all user from firestore database
-  static Stream<QuerySnapshot<Map<String, dynamic>>> getAllUsers(){
-    return firestore.collection('users').where('id', isNotEqualTo: user.uid).snapshots();
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getAllUsers() {
+    final myUid = auth.currentUser?.uid ?? '';
+    return firestore
+        .collection('users')
+        .where('id', isNotEqualTo: myUid)
+        .snapshots();
   }
 
   //for updating current user info

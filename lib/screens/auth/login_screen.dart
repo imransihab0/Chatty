@@ -44,7 +44,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<UserCredential?> _signInWithGoogle() async {
     try {
-      await InternetAddress.lookup('google.com');
+      try {
+        await InternetAddress.lookup('google.com')
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {
+        // Continue to GoogleSignIn even if DNS lookup was slow
+      }
+
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) return null;
@@ -65,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
       log('\n_signInWithGoogle: $e');
       if (mounted) {
         Dialogs.showSnackbar(
-            context, 'Something went wrong, check your internet connection!');
+            context, 'Sign in error: ${e.toString().split(']').last.trim()}');
       }
       return null;
     }
