@@ -780,8 +780,8 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
           FadeTransition(
             opacity: _pulseAnimation,
             child: Container(
-              width: 10,
-              height: 10,
+              width: 9,
+              height: 9,
               decoration: const BoxDecoration(
                 color: AppTheme.danger,
                 shape: BoxShape.circle,
@@ -800,21 +800,23 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
               color: context.textPrimaryColor,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
 
           // High-performance Live Waveform Canvas
           Expanded(
             child: RepaintBoundary(
               child: SizedBox(
-                height: 24,
+                height: 22,
                 child: ValueListenableBuilder<List<double>>(
                   valueListenable: _amplitudesNotifier,
                   builder: (context, amps, _) {
                     return CustomPaint(
                       painter: _LiveWaveformPainter(
                         amplitudes: amps,
-                        activeColor: context.textPrimaryColor.withValues(alpha: 0.65),
-                        idleColor: context.textMutedColor.withValues(alpha: 0.22),
+                        activeColor:
+                            context.textPrimaryColor.withValues(alpha: 0.65),
+                        idleColor:
+                            context.textMutedColor.withValues(alpha: 0.22),
                       ),
                     );
                   },
@@ -824,7 +826,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
           ),
           const SizedBox(width: 8),
 
-          // "Slide to cancel <" Shimmer & Chevron Animation
+          // "Cancel" Shimmer & Chevron Animation
           _buildSlideToCancel(),
         ],
       ),
@@ -833,13 +835,12 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
 
   Widget _buildSlideToCancel() {
     return Transform.translate(
-      offset: Offset(_dragOffsetX * 0.35, 0),
-      child: Opacity(
-        opacity: _cancelThresholdCrossed
-            ? 1.0
-            : (1.0 + _dragOffsetX / 100).clamp(0.2, 1.0),
+      offset: Offset(_dragOffsetX * 0.25, 0),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
         child: _cancelThresholdCrossed
             ? Row(
+                key: const ValueKey('cancel_release'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ScaleTransition(
@@ -852,7 +853,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                   ),
                   const SizedBox(width: 4),
                   const Text(
-                    'Release to cancel',
+                    'Cancel',
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
@@ -863,6 +864,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                 ],
               )
             : AnimatedBuilder(
+                key: const ValueKey('slide_shimmer'),
                 animation: _shimmerController,
                 builder: (context, child) {
                   return ShaderMask(
@@ -872,9 +874,9 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                         begin: Alignment.centerRight,
                         end: Alignment.centerLeft,
                         colors: [
-                          context.textMutedColor.withValues(alpha: 0.4),
+                          context.textMutedColor.withValues(alpha: 0.35),
                           context.textPrimaryColor,
-                          context.textMutedColor.withValues(alpha: 0.4),
+                          context.textMutedColor.withValues(alpha: 0.35),
                         ],
                         stops: [
                           (shimmerVal - 0.25).clamp(0.0, 1.0),
@@ -890,12 +892,12 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                           position: _chevronSlideAnimation,
                           child: const Icon(
                             Icons.chevron_left_rounded,
-                            size: 18,
+                            size: 16,
                           ),
                         ),
                         const SizedBox(width: 2),
                         const Text(
-                          'Slide to cancel',
+                          'Cancel',
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
@@ -926,56 +928,57 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
           '${currentSec ~/ 60}:${(currentSec % 60).toString().padLeft(2, '0')} / ${totalSec ~/ 60}:${(totalSec % 60).toString().padLeft(2, '0')}';
 
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         child: Row(
           children: [
-            // Trash / Discard Button
+            // Discard / Trash Button (Left - consistent placement)
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _cancelRecording,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.danger.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppTheme.danger.withValues(alpha: 0.25),
+                    width: 0.8,
                   ),
-                  child: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: AppTheme.danger,
-                    size: 19,
-                  ),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppTheme.danger,
+                  size: 19,
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
 
             // Play / Pause Preview Button
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _togglePreviewPlay,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: context.primarySoftColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isPlayingPreview
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    color: context.textPrimaryColor,
-                    size: 20,
-                  ),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: context.isDark
+                      ? const Color(0xFF2C2C30)
+                      : const Color(0xFFE4E4E8),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: context.borderColor, width: 0.8),
+                ),
+                child: Icon(
+                  _isPlayingPreview
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  color: context.textPrimaryColor,
+                  size: 20,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
 
             // Progress bar & Time label
             Expanded(
@@ -988,20 +991,22 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 4,
-                      backgroundColor: context.borderColor,
+                      backgroundColor: context.isDark
+                          ? const Color(0xFF2E2E32)
+                          : const Color(0xFFE4E4E8),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         context.isDark ? Colors.white : Colors.black,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     timeLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: context.textSecondaryColor,
                     ),
@@ -1009,6 +1014,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                 ],
               ),
             ),
+            const SizedBox(width: 6),
           ],
         ),
       );
@@ -1019,45 +1025,74 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
     final String timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       child: Row(
         children: [
+          // Discard / Trash Button (Left)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _cancelRecording,
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppTheme.danger.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppTheme.danger.withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppTheme.danger,
+                size: 19,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Red pulse dot
           FadeTransition(
             opacity: _pulseAnimation,
             child: Container(
-              width: 10,
-              height: 10,
+              width: 8,
+              height: 8,
               decoration: const BoxDecoration(
                 color: AppTheme.danger,
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+
+          // Duration counter
           Text(
             timeStr,
             style: TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: context.textPrimaryColor,
             ),
           ),
           const SizedBox(width: 8),
 
-          // Live Waveform
+          // Live Waveform (Wide & Beautiful!)
           Expanded(
             child: RepaintBoundary(
               child: SizedBox(
-                height: 24,
+                height: 22,
                 child: ValueListenableBuilder<List<double>>(
                   valueListenable: _amplitudesNotifier,
                   builder: (context, amps, _) {
                     return CustomPaint(
                       painter: _LiveWaveformPainter(
                         amplitudes: amps,
-                        activeColor: context.textPrimaryColor.withValues(alpha: 0.65),
-                        idleColor: context.textMutedColor.withValues(alpha: 0.22),
+                        activeColor:
+                            context.textPrimaryColor.withValues(alpha: 0.65),
+                        idleColor:
+                            context.textMutedColor.withValues(alpha: 0.22),
                       ),
                     );
                   },
@@ -1065,49 +1100,26 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
 
-          // Pause & Preview Button
+          // Stop / Preview Button (Right)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _pauseAndPreviewRecording,
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: context.primarySoftColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.pause_rounded,
-                  color: context.textPrimaryColor,
-                  size: 18,
-                ),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: context.isDark
+                    ? const Color(0xFF2C2C30)
+                    : const Color(0xFFE4E4E8),
+                shape: BoxShape.circle,
+                border: Border.all(color: context.borderColor, width: 0.8),
               ),
-            ),
-          ),
-          const SizedBox(width: 4),
-
-          // Cancel (trash) button
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _cancelRecording,
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppTheme.danger.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: AppTheme.danger,
-                  size: 18,
-                ),
+              child: Icon(
+                Icons.pause_rounded,
+                color: context.textPrimaryColor,
+                size: 20,
               ),
             ),
           ),

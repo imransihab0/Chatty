@@ -614,7 +614,11 @@ class _MessageCardState extends State<MessageCard> {
                   padding: (widget.message.type == Type.image &&
                           widget.message.replyMsg.isEmpty)
                       ? const EdgeInsets.all(4)
-                      : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      : (widget.message.type == Type.audio &&
+                              widget.message.replyMsg.isEmpty)
+                          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+                          : const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -641,6 +645,9 @@ class _MessageCardState extends State<MessageCard> {
                           isMe: false,
                           audioUrl: widget.message.msg,
                           durationMs: widget.message.durationMs,
+                          sentTime: MyDateUtil.getFormattedTime(
+                              context: context, time: widget.message.sent),
+                          isRead: widget.message.read.isNotEmpty,
                         )
                       else
                         GestureDetector(
@@ -716,7 +723,8 @@ class _MessageCardState extends State<MessageCard> {
                             ),
                           ),
                         ),
-                      if (widget.message.type != Type.image) ...[
+                      if (widget.message.type != Type.image &&
+                          widget.message.type != Type.audio) ...[
                         const SizedBox(height: 3),
                         Align(
                           alignment: Alignment.bottomRight,
@@ -815,7 +823,11 @@ class _MessageCardState extends State<MessageCard> {
                   padding: (widget.message.type == Type.image &&
                           widget.message.replyMsg.isEmpty)
                       ? const EdgeInsets.all(4)
-                      : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      : (widget.message.type == Type.audio &&
+                              widget.message.replyMsg.isEmpty)
+                          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+                          : const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -840,6 +852,9 @@ class _MessageCardState extends State<MessageCard> {
                           isMe: true,
                           audioUrl: widget.message.msg,
                           durationMs: widget.message.durationMs,
+                          sentTime: MyDateUtil.getFormattedTime(
+                              context: context, time: widget.message.sent),
+                          isRead: widget.message.read.isNotEmpty,
                         )
                       else
                         GestureDetector(
@@ -945,7 +960,8 @@ class _MessageCardState extends State<MessageCard> {
                             ),
                           ),
                         ),
-                      if (widget.message.type != Type.image) ...[
+                      if (widget.message.type != Type.image &&
+                          widget.message.type != Type.audio) ...[
                         const SizedBox(height: 3),
                         Align(
                           alignment: Alignment.bottomRight,

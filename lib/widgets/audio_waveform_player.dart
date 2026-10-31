@@ -5,24 +5,21 @@ import 'package:chatty/helper/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
-/// Telegram-style seekable waveform audio player with real playback.
-///
-/// Features:
-/// - Real audio playback via just_audio
-/// - Smooth interactive touch/drag scrubbing across waveform bars
-/// - Play speed toggle: 1×, 1.5×, 2× (accessible before and during playback)
-/// - Accurate drag tracking & haptic feedback ticks
-/// - Animated play/pause icon with error handling
+/// Telegram-Grade Seekable Audio Waveform Player with Integrated Timestamp & Receipts
 class AudioWaveformPlayer extends StatefulWidget {
   final bool isMe;
   final String audioUrl;
   final int durationMs;
+  final String? sentTime;
+  final bool isRead;
 
   const AudioWaveformPlayer({
     super.key,
     required this.isMe,
     required this.audioUrl,
     this.durationMs = 0,
+    this.sentTime,
+    this.isRead = false,
   });
 
   @override
@@ -35,7 +32,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
   late final List<double> _barHeights;
   late final AnimationController _playPauseController;
 
-  static const int _barCount = 28;
+  static const int _barCount = 26;
   static const List<double> _speeds = [1.0, 1.5, 2.0];
   int _speedIndex = 0;
   bool _isLoading = false;
@@ -48,15 +45,16 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
   @override
   void initState() {
     super.initState();
-
     _player = AudioPlayer();
 
-    // Generate deterministic waveform from URL hash
+    // Natural speech envelope waveform (contoured arc with speech variance)
     final random = Random(widget.audioUrl.hashCode);
-    _barHeights = List.generate(
-      _barCount,
-      (i) => 4.0 + random.nextDouble() * 20.0,
-    );
+    _barHeights = List.generate(_barCount, (i) {
+      final double progress = i / (_barCount - 1);
+      final double envelope = sin(progress * pi);
+      final double noise = 0.35 + random.nextDouble() * 0.65;
+      return (4.0 + envelope * noise * 18.0).clamp(4.0, 22.0);
+    });
 
     _playPauseController = AnimationController(
       vsync: this,
@@ -67,21 +65,18 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
   }
 
   Future<void> _initPlayer() async {
-    // Listen to position updates
     _player.positionStream.listen((pos) {
       if (mounted && _scrubFraction == null) {
         setState(() => _position = pos);
       }
     });
 
-    // Listen to duration updates
     _player.durationStream.listen((dur) {
       if (dur != null && mounted) {
         setState(() => _duration = dur);
       }
     });
 
-    // Listen to player state for auto-reset
     _player.playerStateStream.listen((state) {
       if (!mounted) return;
       if (state.processingState == ProcessingState.completed) {
@@ -95,7 +90,6 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
       }
     });
 
-    // Set initial duration from message metadata
     if (widget.durationMs > 0) {
       _duration = Duration(milliseconds: widget.durationMs);
     }
@@ -126,14 +120,17 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
 
   void _togglePlay() {
     AppHaptics.light();
-    if (_hasError) return;
+    if (_hasError) {
+      setState(() => _hasError = false);
+      _loadAndPlay();
+      return;
+    }
 
     if (_player.playing) {
       _player.pause();
       _playPauseController.reverse();
     } else {
       if (_player.duration == null) {
-        // First play — need to load
         _loadAndPlay();
       } else {
         _player.play();
@@ -185,47 +182,53 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
 
     final double progress = _scrubFraction ?? actualProgress;
 
-    final activeBarColor =
-        widget.isMe ? Colors.white : context.textPrimaryColor;
+    final activeBarColor = widget.isMe
+        ? Colors.white
+        : (context.isDark ? Colors.white : Colors.black);
     final inactiveBarColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.45)
-        : (context.isDark ? const Color(0xFF48484A) : const Color(0xFFD4D4D8));
+        ? Colors.white.withValues(alpha: 0.35)
+        : (context.isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8));
     final textColor = widget.isMe
         ? Colors.white
-        : (context.isDark ? const Color(0xFFD4D4D8) : const Color(0xFF3F3F46));
+        : (context.isDark ? const Color(0xFFE4E4E7) : const Color(0xFF27272A));
 
-    // Show remaining time during playback, total duration when stopped
-    final Duration displayDuration = _player.playing
-        ? (_duration - _position)
-        : _duration;
+    final Duration displayDuration =
+        (_player.playing || _scrubFraction != null) ? _position : _duration;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      constraints: BoxConstraints(
-        minWidth: 170,
-        maxWidth: (MediaQuery.sizeOf(context).width * 0.65).clamp(180.0, 240.0),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Play / Pause / Loading Button with Telegram Mic Badge ──
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              GestureDetector(
-                onTap: _isLoading ? null : _togglePlay,
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
+    return SizedBox(
+      width: 236,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // ── Circular Play / Pause Button ──
+            GestureDetector(
+              onTap: _isLoading ? null : _togglePlay,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: widget.isMe
+                      ? Colors.white.withValues(alpha: 0.20)
+                      : (context.isDark
+                          ? const Color(0xFF2C2C30)
+                          : const Color(0xFFE4E4E8)),
+                  shape: BoxShape.circle,
+                  border: Border.all(
                     color: widget.isMe
-                        ? Colors.white.withValues(alpha: 0.22)
-                        : context.primarySoftColor,
-                    shape: BoxShape.circle,
+                        ? Colors.white.withValues(alpha: 0.28)
+                        : (context.isDark
+                            ? const Color(0xFF3A3A40)
+                            : const Color(0xFFD4D4D8)),
+                    width: 0.8,
                   ),
+                ),
+                child: Center(
                   child: _isLoading
-                      ? Padding(
-                          padding: const EdgeInsets.all(10),
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -239,7 +242,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                           ? const Icon(
                               Icons.error_outline_rounded,
                               color: AppTheme.danger,
-                              size: 22,
+                              size: 20,
                             )
                           : AnimatedIcon(
                               icon: AnimatedIcons.play_pause,
@@ -247,144 +250,114 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                               color: widget.isMe
                                   ? Colors.white
                                   : context.textPrimaryColor,
-                              size: 24,
+                              size: 22,
                             ),
                 ),
               ),
-              Positioned(
-                bottom: -1,
-                right: -1,
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  decoration: BoxDecoration(
-                    color: widget.isMe
-                        ? (context.isDark ? const Color(0xFF242426) : Colors.black)
-                        : context.surfaceColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: widget.isMe
-                          ? (context.isDark ? const Color(0xFF38383C) : Colors.black)
-                          : context.borderColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.mic_rounded,
-                    size: 9,
-                    color: widget.isMe ? Colors.white : context.textPrimaryColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
+            ),
+            const SizedBox(width: 10),
 
-          // ── Waveform + Duration + Speed Toggle ──
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Seekable waveform with direct local coordinate mapping
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    const barWidth = 2.8;
+            // ── Waveform + Bottom Metadata (Duration, Speed, SentTime, Checkmarks) ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Seekable contoured waveform
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      const barWidth = 2.4;
 
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onLongPress: () {
-                        // Absorb long press so parent MessageCard options sheet does not fire during scrub
-                      },
-                      onTapDown: (details) {
-                        AppHaptics.selection();
-                        final fraction =
-                            (details.localPosition.dx / width).clamp(0.0, 1.0);
-                        _seekToFraction(fraction);
-                      },
-                      onHorizontalDragStart: (details) {
-                        final fraction =
-                            (details.localPosition.dx / width).clamp(0.0, 1.0);
-                        _lastScrubIndex = (fraction * _barCount).floor();
-                        setState(() => _scrubFraction = fraction);
-                      },
-                      onHorizontalDragUpdate: (details) {
-                        final fraction =
-                            (details.localPosition.dx / width).clamp(0.0, 1.0);
-                        final currentIdx = (fraction * _barCount).floor();
-                        if (currentIdx != _lastScrubIndex) {
-                          _lastScrubIndex = currentIdx;
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onLongPress: () {},
+                        onTapDown: (details) {
                           AppHaptics.selection();
-                        }
-                        setState(() => _scrubFraction = fraction);
-                      },
-                      onHorizontalDragEnd: (_) {
-                        _lastScrubIndex = null;
-                        if (_scrubFraction != null) {
-                          _seekToFraction(_scrubFraction!);
-                        }
-                      },
-                      onHorizontalDragCancel: () {
-                        _lastScrubIndex = null;
-                        setState(() => _scrubFraction = null);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: SizedBox(
-                          height: 28,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: List.generate(_barCount, (index) {
-                              final barFraction = index / _barCount;
-                              final isPast = progress > barFraction;
+                          final fraction =
+                              (details.localPosition.dx / width).clamp(0.0, 1.0);
+                          _seekToFraction(fraction);
+                        },
+                        onHorizontalDragStart: (details) {
+                          final fraction =
+                              (details.localPosition.dx / width).clamp(0.0, 1.0);
+                          _lastScrubIndex = (fraction * _barCount).floor();
+                          setState(() => _scrubFraction = fraction);
+                        },
+                        onHorizontalDragUpdate: (details) {
+                          final fraction =
+                              (details.localPosition.dx / width).clamp(0.0, 1.0);
+                          final currentIdx = (fraction * _barCount).floor();
+                          if (currentIdx != _lastScrubIndex) {
+                            _lastScrubIndex = currentIdx;
+                            AppHaptics.selection();
+                          }
+                          setState(() => _scrubFraction = fraction);
+                        },
+                        onHorizontalDragEnd: (_) {
+                          _lastScrubIndex = null;
+                          if (_scrubFraction != null) {
+                            _seekToFraction(_scrubFraction!);
+                          }
+                        },
+                        onHorizontalDragCancel: () {
+                          _lastScrubIndex = null;
+                          setState(() => _scrubFraction = null);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: SizedBox(
+                            height: 24,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: List.generate(_barCount, (index) {
+                                final barFraction = index / _barCount;
+                                final isPast = progress > barFraction;
 
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 70),
-                                curve: Curves.easeOut,
-                                width: barWidth,
-                                height: _barHeights[index],
-                                decoration: BoxDecoration(
-                                  color: isPast
-                                      ? activeBarColor
-                                      : inactiveBarColor,
-                                  borderRadius: BorderRadius.circular(1.5),
-                                ),
-                              );
-                            }),
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 70),
+                                  curve: Curves.easeOut,
+                                  width: barWidth,
+                                  height: _barHeights[index],
+                                  decoration: BoxDecoration(
+                                    color: isPast
+                                        ? activeBarColor
+                                        : inactiveBarColor,
+                                    borderRadius: BorderRadius.circular(1.5),
+                                  ),
+                                );
+                              }),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 3),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 2),
 
-                // Duration + Speed toggle
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(displayDuration),
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
+                  // Bottom Metadata Row
+                  Row(
+                    children: [
+                      // Duration text
+                      Text(
+                        _formatDuration(displayDuration),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
 
-                    // Speed toggle pill (1× / 1.5× / 2×)
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _cycleSpeed,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 2),
+                      // Speed toggle pill (1× / 1.5× / 2×)
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _cycleSpeed,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2.5),
+                              horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
                             color: _speeds[_speedIndex] > 1.0
                                 ? (widget.isMe
@@ -393,14 +366,14 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                                         ? Colors.white
                                         : Colors.black))
                                 : (widget.isMe
-                                    ? Colors.white.withValues(alpha: 0.22)
+                                    ? Colors.white.withValues(alpha: 0.16)
                                     : context.surfaceMutedColor),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
                               color: widget.isMe
-                                  ? Colors.white.withValues(alpha: 0.3)
+                                  ? Colors.white.withValues(alpha: 0.25)
                                   : context.borderColor,
-                              width: 0.8,
+                              width: 0.6,
                             ),
                           ),
                           child: Text(
@@ -420,19 +393,50 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                                           ? Colors.black
                                           : Colors.white))
                                   : (widget.isMe
-                                      ? Colors.white
+                                      ? Colors.white.withValues(alpha: 0.85)
                                       : context.textSecondaryColor),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+
+                      const Spacer(),
+
+                      // Sent Time & Checkmarks
+                      if (widget.sentTime != null) ...[
+                        Text(
+                          widget.sentTime!,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: widget.isMe
+                                ? Colors.white.withValues(alpha: 0.85)
+                                : (context.isDark
+                                    ? const Color(0xFFA1A1AA)
+                                    : const Color(0xFF71717A)),
+                          ),
+                        ),
+                        if (widget.isMe) ...[
+                          const SizedBox(width: 3),
+                          Icon(
+                            widget.isRead
+                                ? Icons.done_all_rounded
+                                : Icons.done_rounded,
+                            size: 13,
+                            color: widget.isRead
+                                ? AppTheme.success
+                                : Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
