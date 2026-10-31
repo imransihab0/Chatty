@@ -24,7 +24,7 @@ class AppTheme {
   static const Color borderLight = Color(0xFFF4F4F5);
 
   static const Color textPrimary = Color(0xFF09090B); // Pure Crisp Black
-  static const Color textSecondary = Color(0xFF3F3F46); // Zinc-700: High-contrast sharp charcoal (NEVER faded)
+  static const Color textSecondary = Color(0xFF27272A); // Zinc-800: Maximum-contrast sharp charcoal (NEVER faded)
   static const Color textMuted = Color(0xFF52525B); // Zinc-600: High-contrast legible grey
   static const Color textWhite = Color(0xFFFFFFFF);
 
@@ -36,8 +36,8 @@ class AppTheme {
   static const Color darkBorderLight = Color(0xFF1C1C1E);
 
   static const Color darkTextPrimary = Color(0xFFFFFFFF); // Crisp Pure White
-  static const Color darkTextSecondary = Color(0xFFD4D4D8); // Zinc-300: High-contrast crisp silver-white (NEVER faded)
-  static const Color darkTextMuted = Color(0xFFA1A1AA); // Zinc-400: High-contrast crisp grey
+  static const Color darkTextSecondary = Color(0xFFE4E4E7); // Zinc-200: Maximum-contrast crisp bright silver-white (NEVER faded)
+  static const Color darkTextMuted = Color(0xFFD4D4D8); // Zinc-300: High-contrast crisp legible grey
   static const Color darkPrimarySoft = Color(0xFF262628); // Neutral Charcoal Accent
   static const Color darkPrimary = Color(0xFFFFFFFF); // Crisp Pure White Accent
   static const Color darkOnPrimary = Color(0xFF000000); // Pure Black on White

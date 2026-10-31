@@ -76,8 +76,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
         color: isRead
             ? AppTheme.success
             : (context.isDark
-                ? const Color(0xFFA1A1AA)
-                : const Color(0xFF71717A)),
+                ? const Color(0xFFD4D4D8)
+                : const Color(0xFF52525B)),
       ),
     );
   }
@@ -271,19 +271,19 @@ class _ChatUserCardState extends State<ChatUserCard> {
         decoration: BoxDecoration(
           color: isPinned
               ? (context.isDark
-                  ? const Color(0xFF222226)
-                  : const Color(0xFFF2F2F5))
+                  ? const Color(0xFF26262C)
+                  : const Color(0xFFF0F0F4))
               : (context.isDark
-                  ? const Color(0xFF161618)
+                  ? const Color(0xFF1C1C20)
                   : context.surfaceColor),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isPinned
                 ? (context.isDark
-                    ? const Color(0xFF55555A)
+                    ? const Color(0xFF5A5A64)
                     : const Color(0xFFC4C4C8))
                 : (context.isDark
-                    ? const Color(0xFF262628)
+                    ? const Color(0xFF323238)
                     : context.borderColor),
             width: isPinned ? 1.5 : 1,
           ),
@@ -504,8 +504,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                               color: isUnread
                                                   ? context.textPrimaryColor
                                                   : (context.isDark
-                                                      ? const Color(0xFFD4D4D8)
-                                                      : const Color(0xFF3F3F46)),
+                                                      ? const Color(0xFFE4E4E7)
+                                                      : const Color(0xFF27272A)),
                                             ),
                                           ),
                                         ),
@@ -540,8 +540,8 @@ class _ChatUserCardState extends State<ChatUserCard> {
                                               ? Colors.white
                                               : Colors.black)
                                           : (context.isDark
-                                              ? const Color(0xFFA1A1AA)
-                                              : const Color(0xFF71717A)),
+                                              ? const Color(0xFFD4D4D8)
+                                              : const Color(0xFF52525B)),
                                     ),
                                   ),
                                   if (isUnread) ...[
