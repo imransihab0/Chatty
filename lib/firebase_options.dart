@@ -72,6 +72,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'chatty-real.appspot.com',
     androidClientId: '482929881730-fr8aak4plul8j9es4p02bgpcq6e3pdrj.apps.googleusercontent.com',
     iosClientId: '482929881730-g4qvpsjvncfri1gbc6d5i1npfori1mo3.apps.googleusercontent.com',
-    iosBundleId: 'com.example.chatty',
+    iosBundleId: 'com.aziel.chatty',
   );
 }
