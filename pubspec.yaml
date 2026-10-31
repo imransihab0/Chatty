@@ -60,6 +60,9 @@ dev_dependencies:
   # for recommended coding practice
   flutter_lints: ^2.0.0
 
+dependency_overrides:
+  record_platform_interface: 1.2.0
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
