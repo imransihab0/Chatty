@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Credentials, Keys & Secrets
+lib/services/r2_credentials.dart
+lib/config/*credentials*.dart
+*.env
+.env*
+key.properties
+*.keystore
+*.jks
+*.p12
+*.cer
+*.mobileprovision
+*.p8
+

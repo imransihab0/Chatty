@@ -43,6 +43,8 @@ class _ChatScreenState extends State<ChatScreen> {
   int _lastTypingSentTime = 0;
 
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _messagesStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _userInfoStream;
+  late final Stream<DocumentSnapshot<Map<String, dynamic>>> _chatMetaStream;
 
   // Scroll to Bottom & Unread Badge (ValueNotifiers isolate scroll state from StreamBuilder)
   final ValueNotifier<bool> _showScrollToBottomNotifier = ValueNotifier<bool>(false);
@@ -62,6 +64,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _messagesStream = APIs.getAllMessages(widget.user);
+    _userInfoStream = APIs.getUserInfo(widget.user);
+    _chatMetaStream = APIs.getChatMeta(widget.user);
     _scrollController = ScrollController();
     _scrollController.addListener(_onChatScroll);
   }
@@ -397,6 +401,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _stopSearch() {
+    FocusScope.of(context).unfocus();
     setState(() {
       _isSearching = false;
       _searchController.clear();
@@ -592,130 +597,133 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               _buildSearchStepperBar(),
             Expanded(
-              child: StreamBuilder(
+              key: const ValueKey('chat_messages_expanded'),
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                key: const ValueKey('chat_messages_stream_builder'),
                 stream: _messagesStream,
                 builder: (context, snapshot) {
-                  switch (snapshot.connectionState) {
-                    case ConnectionState.waiting:
-                    case ConnectionState.none:
-                      return const ChatMessagesSkeletonList();
+                  if (snapshot.hasData) {
+                    final data = snapshot.data?.docs;
+                    final prevCount = _lastKnownCount;
+                    _list = data
+                            ?.map((e) => Message.fromJson(e.data()))
+                            .toList() ??
+                        [];
+                    _updateMatches(_list);
 
-                    case ConnectionState.active:
-                    case ConnectionState.done:
-                      final data = snapshot.data?.docs;
-                      final prevCount = _lastKnownCount;
-                      _list = data
-                              ?.map((e) => Message.fromJson(e.data()))
-                              .toList() ??
-                          [];
-                      _updateMatches(_list);
-
-                      if (prevCount > 0 &&
-                          _list.length > prevCount &&
-                          _showScrollToBottomNotifier.value) {
-                        _newMessagesWhileScrolledNotifier.value += (_list.length - prevCount);
-                      }
-                      _lastKnownCount = _list.length;
-
-                      if (_list.isEmpty) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 72,
-                                  height: 72,
-                                  decoration: BoxDecoration(
-                                    color: context.primarySoftColor,
-                                    borderRadius: BorderRadius.circular(36),
-                                  ),
-                                  child: const Center(
-                                    child: Text('👋',
-                                        style: TextStyle(fontSize: 32)),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Say hello to ${widget.user.name}!',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: context.textPrimaryColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Send a message or photo to start your conversation.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 13,
-                                    color: context.textSecondaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return Stack(
-                        children: [
-                          ListView.builder(
-                            controller: _scrollController,
-                            reverse: true,
-                            itemCount: _list.length,
-                            padding: const EdgeInsets.only(top: 10, bottom: 6),
-                            physics: const BouncingScrollPhysics(
-                                parent: AlwaysScrollableScrollPhysics()),
-                            keyboardDismissBehavior:
-                                ScrollViewKeyboardDismissBehavior.onDrag,
-                            itemBuilder: (context, index) {
-                              final msg = _list[index];
-                              final bool isOldest =
-                                  index == _list.length - 1;
-                              final bool showDateHeader = isOldest ||
-                                  MyDateUtil.isDifferentDay(
-                                      msg.sent,
-                                      _list[index + 1].sent);
-
-                              // In reverse list: index + 1 is above (earlier), index - 1 is below (later)
-                              final bool isPrevSame = index + 1 < _list.length &&
-                                  _list[index + 1].fromId == msg.fromId &&
-                                  !MyDateUtil.isDifferentDay(msg.sent, _list[index + 1].sent);
-
-                              final bool isNextSame = index - 1 >= 0 &&
-                                  _list[index - 1].fromId == msg.fromId &&
-                                  !MyDateUtil.isDifferentDay(msg.sent, _list[index - 1].sent);
-
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (showDateHeader)
-                                    _buildDateHeader(msg.sent),
-                                  MessageCard(
-                                    message: msg,
-                                    highlightQuery:
-                                        _isSearching ? _searchQuery : null,
-                                    isPrevSame: isPrevSame,
-                                    isNextSame: isNextSame,
-                                    onSwipeReply: (m) {
-                                      setState(() => _replyMessage = m);
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          _buildStickyDateHeader(),
-                          _buildScrollToBottomButton(),
-                        ],
-                      );
+                    if (prevCount > 0 &&
+                        _list.length > prevCount &&
+                        _showScrollToBottomNotifier.value) {
+                      _newMessagesWhileScrolledNotifier.value +=
+                          (_list.length - prevCount);
+                    }
+                    _lastKnownCount = _list.length;
                   }
+
+                  // If messages are already in memory, NEVER drop them to show a skeleton.
+                  // Only show skeleton on initial cold load before any data has arrived.
+                  if (_list.isEmpty) {
+                    if (snapshot.connectionState == ConnectionState.waiting ||
+                        snapshot.connectionState == ConnectionState.none) {
+                      return const ChatMessagesSkeletonList();
+                    }
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: context.primarySoftColor,
+                                borderRadius: BorderRadius.circular(36),
+                              ),
+                              child: const Center(
+                                child: Text('👋',
+                                    style: TextStyle(fontSize: 32)),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Say hello to ${widget.user.name}!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: context.textPrimaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Send a message or photo to start your conversation.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                color: context.textSecondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Stack(
+                    children: [
+                      ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        itemCount: _list.length,
+                        padding: const EdgeInsets.only(top: 10, bottom: 6),
+                        physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics()),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        itemBuilder: (context, index) {
+                          final msg = _list[index];
+                          final bool isOldest =
+                              index == _list.length - 1;
+                          final bool showDateHeader = isOldest ||
+                              MyDateUtil.isDifferentDay(
+                                  msg.sent,
+                                  _list[index + 1].sent);
+
+                          // In reverse list: index + 1 is above (earlier), index - 1 is below (later)
+                          final bool isPrevSame = index + 1 < _list.length &&
+                              _list[index + 1].fromId == msg.fromId &&
+                              !MyDateUtil.isDifferentDay(msg.sent, _list[index + 1].sent);
+
+                          final bool isNextSame = index - 1 >= 0 &&
+                              _list[index - 1].fromId == msg.fromId &&
+                              !MyDateUtil.isDifferentDay(msg.sent, _list[index - 1].sent);
+
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (showDateHeader)
+                                _buildDateHeader(msg.sent),
+                              MessageCard(
+                                message: msg,
+                                highlightQuery:
+                                    _isSearching ? _searchQuery : null,
+                                isPrevSame: isPrevSame,
+                                isNextSame: isNextSame,
+                                onSwipeReply: (m) {
+                                  setState(() => _replyMessage = m);
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      _buildStickyDateHeader(),
+                      _buildScrollToBottomButton(),
+                    ],
+                  );
                 },
               ),
             ),
@@ -761,8 +769,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
 
-            if (!_isSearching)
-              ChatVoiceInputBar(
+            Offstage(
+              offstage: _isSearching,
+              child: ChatVoiceInputBar(
+                key: const ValueKey('chat_voice_input_bar'),
                 user: widget.user,
                 textController: _textController,
                 replyMessage: _replyMessage,
@@ -814,6 +824,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
                 onTextChanged: _onTextChanged,
               ),
+            ),
           ],
         ),
       ),
@@ -868,8 +879,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // App Bar
   Widget _appBar() {
-    return StreamBuilder(
-      stream: APIs.getUserInfo(widget.user),
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _userInfoStream,
       builder: (context, snapshot) {
         final data = snapshot.data?.docs;
         final list =
@@ -922,8 +933,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            StreamBuilder(
-                              stream: APIs.getChatMeta(widget.user),
+                            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                              stream: _chatMetaStream,
                               builder: (context, metaSnapshot) {
                                 final metaData = metaSnapshot.data?.data();
                                 final bool isTypingRaw =
@@ -1063,26 +1074,35 @@ class _ChatScreenState extends State<ChatScreen> {
               child: TextField(
                 controller: _searchController,
                 autofocus: true,
+                maxLines: 1,
+                textAlignVertical: TextAlignVertical.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 14,
                   color: context.textPrimaryColor,
                 ),
                 decoration: InputDecoration(
+                  isDense: true,
                   hintText: 'Search in conversation...',
                   hintStyle: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 13,
                     color: context.textMutedColor,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 38, minHeight: 40),
                   prefixIcon: Icon(
                     Icons.search_rounded,
                     color: context.textSecondaryColor,
                     size: 20,
                   ),
+                  suffixIconConstraints:
+                      const BoxConstraints(minWidth: 38, minHeight: 40),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           splashRadius: 16,
+                          padding: EdgeInsets.zero,
                           icon: Icon(Icons.clear_rounded,
                               color: context.textMutedColor, size: 18),
                           onPressed: () {
@@ -1097,8 +1117,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       : null,
                   border: InputBorder.none,
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  isDense: true,
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                 ),
                 onChanged: (val) {
                   setState(() {

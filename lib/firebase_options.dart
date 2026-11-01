@@ -57,21 +57,21 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAFUMQz6mXzK-QTiKFxfzYfORhm9duC22E',
-    appId: '1:482929881730:android:80e51a0c0bcb8715227a9b',
-    messagingSenderId: '482929881730',
-    projectId: 'chatty-real',
-    storageBucket: 'chatty-real.appspot.com',
+    apiKey: 'AIzaSyBmJjaW6Vktwhf5cJXGmi-r-xNuNd_DLCI',
+    appId: '1:449504252227:android:bfd31b5aabe23b5e975ff6',
+    messagingSenderId: '449504252227',
+    projectId: 'chatty-kopinfotech',
+    storageBucket: 'chatty-kopinfotech.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDfgdd2QTT-FQHA30U02Bw4HBDBhEnaxHg',
-    appId: '1:482929881730:ios:76a3fa4cfde68cfc227a9b',
-    messagingSenderId: '482929881730',
-    projectId: 'chatty-real',
-    storageBucket: 'chatty-real.appspot.com',
-    androidClientId: '482929881730-fr8aak4plul8j9es4p02bgpcq6e3pdrj.apps.googleusercontent.com',
-    iosClientId: '482929881730-g4qvpsjvncfri1gbc6d5i1npfori1mo3.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDuOYIe8l39PMQzxesW-5scSL40PcU7LIo',
+    appId: '1:449504252227:ios:01fe93c15b390f13975ff6',
+    messagingSenderId: '449504252227',
+    projectId: 'chatty-kopinfotech',
+    storageBucket: 'chatty-kopinfotech.firebasestorage.app',
+    androidClientId: '449504252227-rcj6c6dqc7g7kkeul67npk12jp79ppkd.apps.googleusercontent.com',
+    iosClientId: '449504252227-dc3g146m0u9mr3ljfkierrknn3geur36.apps.googleusercontent.com',
     iosBundleId: 'com.aziel.chatty',
   );
 }

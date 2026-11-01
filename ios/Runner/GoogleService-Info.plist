@@ -3,23 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>482929881730-g4qvpsjvncfri1gbc6d5i1npfori1mo3.apps.googleusercontent.com</string>
+	<string>449504252227-dc3g146m0u9mr3ljfkierrknn3geur36.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.482929881730-g4qvpsjvncfri1gbc6d5i1npfori1mo3</string>
+	<string>com.googleusercontent.apps.449504252227-dc3g146m0u9mr3ljfkierrknn3geur36</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>482929881730-fr8aak4plul8j9es4p02bgpcq6e3pdrj.apps.googleusercontent.com</string>
+	<string>449504252227-rcj6c6dqc7g7kkeul67npk12jp79ppkd.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDfgdd2QTT-FQHA30U02Bw4HBDBhEnaxHg</string>
+	<string>AIzaSyDuOYIe8l39PMQzxesW-5scSL40PcU7LIo</string>
 	<key>GCM_SENDER_ID</key>
-	<string>482929881730</string>
+	<string>449504252227</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.aziel.chatty</string>
 	<key>PROJECT_ID</key>
-	<string>chatty-real</string>
+	<string>chatty-kopinfotech</string>
 	<key>STORAGE_BUCKET</key>
-	<string>chatty-real.appspot.com</string>
+	<string>chatty-kopinfotech.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:482929881730:ios:76a3fa4cfde68cfc227a9b</string>
+	<string>1:449504252227:ios:01fe93c15b390f13975ff6</string>
 </dict>
 </plist>

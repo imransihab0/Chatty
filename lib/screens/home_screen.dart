@@ -142,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           backgroundColor: context.backgroundColor,
           appBar: _isSearching ? _searchAppBar() : _defaultAppBar(),
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            key: const ValueKey('home_users_stream_builder'),
             stream: _usersStream,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
@@ -150,7 +151,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ?.map((e) => ChatUser.fromJson(e.data()))
                         .toList() ??
                     [];
+              }
 
+              if (_list.isNotEmpty) {
                 // Start observing latest messages across all users in background
                 ConversationController.watchUsers(_list);
 
@@ -416,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // Full-width Dedicated Search Bar
+  // Full-width Dedicated Search Bar (Fixed 40px height, single-line, locked)
   AppBar _searchAppBar() {
     return AppBar(
       backgroundColor: context.surfaceColor,
@@ -436,33 +439,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           color: context.surfaceMutedColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: context.borderColor),
         ),
         child: TextField(
           controller: _searchController,
           focusNode: _searchFocusNode,
+          maxLines: 1,
+          textAlignVertical: TextAlignVertical.center,
           style: TextStyle(
             fontFamily: AppTypography.fontFamily,
             fontSize: 14,
             color: context.textPrimaryColor,
           ),
           decoration: InputDecoration(
+            isDense: true,
             hintText: 'Search by name, @username, or email...',
             hintStyle: TextStyle(
               fontFamily: AppTypography.fontFamily,
               fontSize: 13,
               color: context.textMutedColor,
+              overflow: TextOverflow.ellipsis,
             ),
             border: InputBorder.none,
+            prefixIconConstraints:
+                const BoxConstraints(minWidth: 38, minHeight: 40),
             prefixIcon: Icon(
               Icons.search_rounded,
               color: context.textSecondaryColor,
               size: 20,
             ),
+            suffixIconConstraints:
+                const BoxConstraints(minWidth: 38, minHeight: 40),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     splashRadius: 18,
+                    padding: EdgeInsets.zero,
                     icon: Icon(
                       Icons.clear_rounded,
                       color: context.textMutedColor,
@@ -475,8 +487,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   )
                 : null,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            isDense: true,
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
           ),
           onChanged: _onSearchChanged,
         ),
@@ -718,21 +729,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // Quick Search Trigger Pill when not searching
+  // Quick Search Trigger Pill in the main field (Locked 42px height, single-line, never expands vertically)
   Widget _searchTriggerPill() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
       child: Material(
         color: context.surfaceMutedColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           onTap: _startSearch,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.borderColor),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: context.borderColor, width: 0.8),
             ),
             child: Row(
               children: [
@@ -745,6 +757,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 Expanded(
                   child: Text(
                     'Search by name, @username, or email...',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: TextStyle(
                       fontFamily: AppTypography.fontFamily,
                       fontSize: 13,

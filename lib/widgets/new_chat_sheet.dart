@@ -156,6 +156,7 @@ class _NewChatSheetState extends State<NewChatSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: Container(
+                height: 44,
                 decoration: BoxDecoration(
                   color: context.surfaceMutedColor,
                   borderRadius: BorderRadius.circular(14),
@@ -165,6 +166,8 @@ class _NewChatSheetState extends State<NewChatSheet> {
                   controller: _controller,
                   focusNode: _focusNode,
                   autofocus: true,
+                  maxLines: 1,
+                  textAlignVertical: TextAlignVertical.center,
                   textInputAction: TextInputAction.search,
                   keyboardType: TextInputType.emailAddress,
                   style: TextStyle(
@@ -174,17 +177,23 @@ class _NewChatSheetState extends State<NewChatSheet> {
                   ),
                   onChanged: _onQueryChanged,
                   decoration: InputDecoration(
+                    isDense: true,
                     hintText: 'Search username (@handle) or email...',
                     hintStyle: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 13.5,
                       color: context.textMutedColor,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    prefixIconConstraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 44),
                     prefixIcon: Icon(
                       Icons.alternate_email_rounded,
                       color: context.textSecondaryColor,
                       size: 19,
                     ),
+                    suffixIconConstraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 44),
                     suffixIcon: _isLoading
                         ? Center(
                             child: SizedBox(
@@ -213,8 +222,8 @@ class _NewChatSheetState extends State<NewChatSheet> {
                             : null,
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
+                      horizontal: 10,
+                      vertical: 0,
                     ),
                   ),
                 ),

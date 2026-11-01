@@ -217,20 +217,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
             final canSave = isAvailable == true && !isChecking;
 
-            return Container(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomInset),
-              decoration: BoxDecoration(
-                color: sheetBuilderCtx.surfaceColor,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-                border: Border(
-                  top: BorderSide(color: sheetBuilderCtx.borderColor, width: 0.8),
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: sheetBuilderCtx.surfaceColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border(
+                    top: BorderSide(color: sheetBuilderCtx.borderColor, width: 0.8),
+                  ),
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                   Center(
                     child: Container(
                       width: 36,
@@ -407,7 +413,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-            );
+            ),
+          ),
+        ),
+      );
           },
         );
       },
@@ -543,13 +552,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Container(
             decoration: BoxDecoration(
-              color: context.surfaceColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: context.borderColor, width: 0.8),
               boxShadow: context.softShadow,
             ),
-            child: ClipRRect(
+            child: Material(
+              color: context.surfaceColor,
               borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: children,

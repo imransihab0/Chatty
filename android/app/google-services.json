@@ -1,49 +1,42 @@
 {
   "project_info": {
-    "project_number": "482929881730",
-    "project_id": "chatty-real",
-    "storage_bucket": "chatty-real.appspot.com"
+    "project_number": "449504252227",
+    "project_id": "chatty-kopinfotech",
+    "storage_bucket": "chatty-kopinfotech.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:482929881730:android:80e51a0c0bcb8715227a9b",
+        "mobilesdk_app_id": "1:449504252227:android:bfd31b5aabe23b5e975ff6",
         "android_client_info": {
-          "package_name": "com.example.chatty"
+          "package_name": "com.aziel.chatty"
         }
       },
       "oauth_client": [
         {
-          "client_id": "482929881730-h4ekjh1qn9ie2h20mepl1hp34qq997oj.apps.googleusercontent.com",
+          "client_id": "449504252227-rcj6c6dqc7g7kkeul67npk12jp79ppkd.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.chatty",
-            "certificate_hash": "b43f28a1177d6f8fbf10876e1114b483dc5f5a7d"
+            "package_name": "com.aziel.chatty",
+            "certificate_hash": "150fe19da882926d8b6d769a55874ce26a1a068a"
           }
         },
         {
-          "client_id": "482929881730-d4bfuln2du8ca1emroi8nfqhd995hvsa.apps.googleusercontent.com",
+          "client_id": "449504252227-9a3orqchqhkq03pgu9ksmnotgr8asbg3.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAFUMQz6mXzK-QTiKFxfzYfORhm9duC22E"
+          "current_key": "AIzaSyBmJjaW6Vktwhf5cJXGmi-r-xNuNd_DLCI"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "482929881730-d4bfuln2du8ca1emroi8nfqhd995hvsa.apps.googleusercontent.com",
+              "client_id": "449504252227-9a3orqchqhkq03pgu9ksmnotgr8asbg3.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "482929881730-g4qvpsjvncfri1gbc6d5i1npfori1mo3.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.chatty"
-              }
             }
           ]
         }

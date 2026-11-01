@@ -4,6 +4,8 @@ import 'dart:math' show Random;
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/models/message.dart';
 import 'package:chatty/services/conversation_controller.dart';
+import 'package:chatty/services/image_compressor.dart';
+import 'package:chatty/services/r2_storage_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -195,10 +197,28 @@ class APIs{
   static Future<bool> updateProfilePicture(File file) async {
     try {
       if (auth.currentUser == null) return false;
-      final ext = file.path.split('.').last;
+
+      // 1. If Cloudflare R2 is configured, upload to R2
+      if (R2StorageService.isConfigured) {
+        final r2Url =
+            await R2StorageService.uploadProfilePicture(file, user.uid);
+        if (r2Url != null) {
+          me.image = r2Url;
+          await firestore
+              .collection('users')
+              .doc(user.uid)
+              .update({'image': me.image});
+          return true;
+        }
+      }
+
+      // 2. Otherwise compress and fallback to Firebase Storage
+      final compressed = await ImageCompressor.compressUnder100Kb(file);
+      final ext = compressed.path.split('.').last;
       log('Extension: $ext');
       final ref = storage.ref().child('profile_pictures/${user.uid}.$ext');
-      final p0 = await ref.putFile(file, SettableMetadata(contentType: 'image/$ext'));
+      final p0 =
+          await ref.putFile(compressed, SettableMetadata(contentType: 'image/$ext'));
       log('Data Transferred: ${p0.bytesTransferred / 1000}kb');
       me.image = await ref.getDownloadURL();
       await firestore.collection('users').doc(user.uid).update({
@@ -353,10 +373,23 @@ class APIs{
   // send img
   static Future<bool> sendChatImage(ChatUser chatUser, File file) async {
     try {
-      final ext = file.path.split('.').last;
+      final convoId = getConversationID(chatUser.id);
+
+      // 1. If Cloudflare R2 is configured, compress and upload to R2
+      if (R2StorageService.isConfigured) {
+        final r2Url = await R2StorageService.uploadChatImage(file, convoId);
+        if (r2Url != null) {
+          await sendMessage(chatUser, r2Url, Type.image);
+          return true;
+        }
+      }
+
+      // 2. Otherwise compress and fallback to Firebase Storage
+      final compressed = await ImageCompressor.compressUnder100Kb(file);
+      final ext = compressed.path.split('.').last;
       log('Extension: $ext');
-      final ref = storage.ref().child('images/${getConversationID(chatUser.id)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
-      final p0 = await ref.putFile(file, SettableMetadata(contentType: 'image/$ext'));
+      final ref = storage.ref().child('images/$convoId/${DateTime.now().millisecondsSinceEpoch}.$ext');
+      final p0 = await ref.putFile(compressed, SettableMetadata(contentType: 'image/$ext'));
       log('Data Transferred: ${p0.bytesTransferred / 1000}kb');
       final imageUrl = await ref.getDownloadURL();
       await sendMessage(chatUser, imageUrl, Type.image);
@@ -371,14 +404,25 @@ class APIs{
   static Future<bool> sendVoiceNote(
       ChatUser chatUser, File audioFile, int durationMs) async {
     try {
-      final ext = audioFile.path.split('.').last;
-      log('Voice note extension: $ext');
-      final ref = storage.ref().child(
-          'audio/${getConversationID(chatUser.id)}/${DateTime.now().millisecondsSinceEpoch}.$ext');
-      final p0 = await ref.putFile(
-          audioFile, SettableMetadata(contentType: 'audio/$ext'));
-      log('Voice note uploaded: ${p0.bytesTransferred / 1000}kb');
-      final audioUrl = await ref.getDownloadURL();
+      final convoId = getConversationID(chatUser.id);
+      String? audioUrl;
+
+      // 1. If Cloudflare R2 is configured, upload to R2
+      if (R2StorageService.isConfigured) {
+        audioUrl = await R2StorageService.uploadVoiceNote(audioFile, convoId);
+      }
+
+      // 2. Otherwise fallback to Firebase Storage
+      if (audioUrl == null) {
+        final ext = audioFile.path.split('.').last;
+        log('Voice note extension: $ext');
+        final ref = storage.ref().child(
+            'audio/$convoId/${DateTime.now().millisecondsSinceEpoch}.$ext');
+        final p0 = await ref.putFile(
+            audioFile, SettableMetadata(contentType: 'audio/$ext'));
+        log('Voice note uploaded: ${p0.bytesTransferred / 1000}kb');
+        audioUrl = await ref.getDownloadURL();
+      }
 
       // Send as audio message with duration stored in Firestore
       if (auth.currentUser == null) return false;
@@ -393,7 +437,6 @@ class APIs{
         durationMs: durationMs,
       );
 
-      final convoId = getConversationID(chatUser.id);
       final msgRef = firestore.collection('chats/$convoId/messages/');
       await msgRef.doc(time).set(message.toJson());
 
@@ -431,7 +474,14 @@ class APIs{
           .delete();
 
       if (message.type == Type.image || message.type == Type.audio) {
-        await storage.refFromURL(message.msg).delete().catchError((_) {});
+        if (message.msg.contains('r2.dev') ||
+            message.msg.contains('cloudflarestorage.com') ||
+            (R2StorageService.isConfigured &&
+                message.msg.contains(R2StorageService.publicDomain))) {
+          await R2StorageService.deleteObject(message.msg);
+        } else {
+          await storage.refFromURL(message.msg).delete().catchError((_) {});
+        }
       }
     } catch (e) {
       log('Error deleteMessage: $e');

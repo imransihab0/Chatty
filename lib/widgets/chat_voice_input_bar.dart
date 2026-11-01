@@ -529,30 +529,26 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                // ── Telegram Separate Circular Attachment Button (Left) ──
+                if (!_isRecording) ...[
+                  _buildAttachmentButton(),
+                  const SizedBox(width: 6),
+                ],
+
                 // ── Telegram Input Bar Capsule / Voice Recording HUD ──
                 Expanded(
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
-                    constraints: const BoxConstraints(minHeight: 44),
+                    constraints: const BoxConstraints(minHeight: 42),
                     decoration: BoxDecoration(
-                      color: _isRecording
-                          ? (context.isDark
-                              ? const Color(0xFF1C1C1E)
-                              : const Color(0xFFF2F2F7))
-                          : (context.isDark
-                              ? const Color(0xFF1C1C1E)
-                              : const Color(0xFFF2F2F7)),
-                      borderRadius: BorderRadius.circular(22),
+                      color: context.surfaceMutedColor,
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: _isRecording
-                            ? (_cancelThresholdCrossed
-                                ? AppTheme.danger
-                                : context.borderColor)
-                            : (context.isDark
-                                ? const Color(0xFF2C2C30)
-                                : const Color(0xFFE5E5EA)),
-                        width: 0.7,
+                        color: _isRecording && _cancelThresholdCrossed
+                            ? AppTheme.danger
+                            : context.borderColor,
+                        width: 0.8,
                       ),
                     ),
                     child: _isRecording
@@ -708,65 +704,73 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
     );
   }
 
+  // ── Separate Telegram Circular Attachment Button (Left) ──
+  Widget _buildAttachmentButton() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        AppHaptics.light();
+        _showTelegramAttachmentSheet(context);
+      },
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: context.surfaceMutedColor,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: context.borderColor,
+            width: 0.8,
+          ),
+        ),
+        child: Center(
+          child: Transform.rotate(
+            angle: -math.pi / 4,
+            child: Icon(
+              Icons.attach_file_rounded,
+              color: context.textSecondaryColor,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── Standard Text Input Row ──
   Widget _buildTextInputRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Telegram Sleek Attachment Button (Paperclip)
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _showTelegramAttachmentSheet(context),
-          child: SizedBox(
-            width: 38,
-            height: 44,
-            child: Center(
-              child: Transform.rotate(
-                angle: -math.pi / 4,
-                child: Icon(
-                  Icons.attach_file_rounded,
-                  color: context.textSecondaryColor,
-                  size: 21,
-                ),
-              ),
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: TextField(
+        controller: widget.textController,
+        onChanged: widget.onTextChanged,
+        keyboardType: TextInputType.multiline,
+        textCapitalization: TextCapitalization.sentences,
+        minLines: 1,
+        maxLines: 5,
+        cursorColor: context.primaryColor,
+        style: TextStyle(
+          fontFamily: AppTypography.fontFamily,
+          fontSize: 14.5,
+          fontWeight: FontWeight.w400,
+          color: context.textPrimaryColor,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Message',
+          hintStyle: TextStyle(
+            fontFamily: AppTypography.fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: context.textMutedColor,
+          ),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 0,
+            vertical: 10,
           ),
         ),
-        // Clean Typography Text Field auto-expanding up to 5 lines
-        Expanded(
-          child: TextField(
-            controller: widget.textController,
-            onChanged: widget.onTextChanged,
-            keyboardType: TextInputType.multiline,
-            textCapitalization: TextCapitalization.sentences,
-            minLines: 1,
-            maxLines: 5,
-            cursorColor: context.primaryColor,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: context.textPrimaryColor,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Message',
-              hintStyle: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                color: context.textMutedColor,
-              ),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 12,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-      ],
+      ),
     );
   }
 
@@ -777,7 +781,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
     final String timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
     return Container(
-      height: 44,
+      height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
@@ -1211,8 +1215,8 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
       return GestureDetector(
         onTap: _isSendingVoice ? null : _stopAndSendRecording,
         child: Container(
-          width: 44,
-          height: 44,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
             color: context.isDark ? Colors.white : Colors.black,
             shape: BoxShape.circle,
@@ -1282,8 +1286,8 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          width: 44,
-          height: 44,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
             color: _cancelThresholdCrossed
                 ? AppTheme.danger
@@ -1374,8 +1378,8 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
               }
             },
       child: Container(
-        width: 44,
-        height: 44,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: context.isDark ? Colors.white : Colors.black,
           shape: BoxShape.circle,

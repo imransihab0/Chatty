@@ -122,36 +122,39 @@ class _CircularThemeCoverState extends State<CircularThemeCover>
       final size = MediaQuery.sizeOf(context);
       final isDarkCurrently = ThemeController.isDark(context);
 
-      // If the render object needs paint, wait for the frame to complete
-      if (boundary.debugNeedsPaint) {
-        await WidgetsBinding.instance.endOfFrame;
-      }
-
       if (!mounted) return;
 
-      final image = await boundary.toImage(pixelRatio: pixelRatio);
+      ui.Image image;
+      try {
+        image = await boundary.toImage(pixelRatio: pixelRatio);
+      } catch (_) {
+        // Wait for frame rendering to settle before taking snapshot
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+        image = await boundary.toImage(pixelRatio: pixelRatio);
+      }
 
       if (!mounted) {
         image.dispose();
         return;
       }
 
-      _isGoingDark = !isDarkCurrently;
-      _origin = origin ?? Offset(size.width - 44, 56);
-      _oldThemeSnapshot = image;
-      _isTransitioning = true;
-
       AppHaptics.medium();
 
-      // Switch the active application theme
-      onToggle();
+      setState(() {
+        _isGoingDark = !isDarkCurrently;
+        _origin = origin ?? Offset(size.width - 44, 56);
+        _oldThemeSnapshot = image;
+        _isTransitioning = true;
+      });
 
-      setState(() {});
+      // Switch active application theme now that the old snapshot is securely layered on top
+      onToggle();
 
       // Begin the expanding circular reveal animation
       _controller.forward(from: 0.0);
     } catch (e) {
-      // Graceful fallback if snapshotting fails
+      debugPrint('CircularThemeCover transition fallback: $e');
       _finishTransition();
       onToggle();
     }

@@ -58,13 +58,30 @@ class _LoginScreenState extends State<LoginScreen> {
         // Continue to GoogleSignIn even if DNS lookup was slow
       }
 
-      // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      // Trigger the authentication flow with explicit client IDs for Android & iOS
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        serverClientId: Platform.isAndroid
+            ? '449504252227-9a3orqchqhkq03pgu9ksmnotgr8asbg3.apps.googleusercontent.com'
+            : null,
+        clientId: Platform.isIOS
+            ? '449504252227-dc3g146m0u9mr3ljfkierrknn3geur36.apps.googleusercontent.com'
+            : null,
+      );
+
+      // Clear any cached stale session to force fresh account selection
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) return null;
 
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      log('\nGoogle Auth idToken: ${googleAuth.idToken != null ? "Present" : "NULL"}');
+      log('Google Auth accessToken: ${googleAuth.accessToken != null ? "Present" : "NULL"}');
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
@@ -74,11 +91,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Once signed in, return the UserCredential
       return await APIs.auth.signInWithCredential(credential);
-    } catch (e) {
-      log('\n_signInWithGoogle: $e');
+    } catch (e, stack) {
+      log('\n_signInWithGoogle error: $e');
+      log('StackTrace: $stack');
+      debugPrint('\n==================== [DETAILED GOOGLE SIGN IN ERROR] ====================');
+      debugPrint('ERROR: $e');
+      debugPrint('ERROR TYPE: ${e.runtimeType}');
+      debugPrint('STACK TRACE:\n$stack');
+      debugPrint('=========================================================================\n');
       if (mounted) {
-        Dialogs.showSnackbar(
-            context, 'Sign in error: ${e.toString().split(']').last.trim()}');
+        final errorMsg = e.toString();
+        if (errorMsg.contains('10') || errorMsg.contains('sign_in_failed')) {
+          Dialogs.showSnackbar(context,
+              'Sign in failed: SHA-1 certificate must be added in Firebase Console');
+        } else {
+          Dialogs.showSnackbar(
+              context, 'Sign in error: ${errorMsg.split(']').last.trim()}');
+        }
       }
       return null;
     }
