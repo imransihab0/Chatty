@@ -47,6 +47,10 @@ class MyDateUtil{
     }
 
     String month = _getMonth(time);
+    if (time.year != now.year) {
+      return 'Last seen on ${time.day} $month ${time.year}';
+    }
+
     return 'Last seen on ${time.day} $month at $formattedTime';
   }
 
