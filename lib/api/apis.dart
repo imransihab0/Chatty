@@ -307,6 +307,22 @@ class APIs{
         'last_from_id': user.uid,
       }, SetOptions(merge: true));
 
+      // Record connection between both users in Firestore
+      firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('my_users')
+          .doc(chatUser.id)
+          .set({'connected_at': time}, SetOptions(merge: true))
+          .catchError((_) {});
+      firestore
+          .collection('users')
+          .doc(chatUser.id)
+          .collection('my_users')
+          .doc(user.uid)
+          .set({'connected_at': time}, SetOptions(merge: true))
+          .catchError((_) {});
+
       // Optimistically update conversation controller for instant reordering and filter updates
       ConversationController.updateLastMessage(chatUser.id, message);
 
@@ -452,10 +468,11 @@ class APIs{
     }
   }
 
-  // search users across entire Firestore database by username, handle, email, or name
+  // Search users across entire Firestore database strictly by username (@handle) or email
   static Future<List<ChatUser>> searchUsers(String query) async {
     try {
-      final cleanQuery = query.trim().toLowerCase().replaceAll('@', '');
+      final raw = query.trim().toLowerCase();
+      final cleanQuery = raw.replaceAll('@', '');
       if (cleanQuery.isEmpty) return [];
 
       final snapshot = await firestore
@@ -466,18 +483,19 @@ class APIs{
       return snapshot.docs
           .map((e) => ChatUser.fromJson(e.data()))
           .where((u) {
-            final name = u.name.toLowerCase();
             final username = u.username.toLowerCase();
             final email = u.email.toLowerCase();
-            final emailHandle =
+            final emailPrefix =
                 email.contains('@') ? email.split('@').first : email;
-            final nameHandle = name.replaceAll(' ', '');
-            return name.contains(cleanQuery) ||
+
+            // User must connect via unique @username or email address
+            return username == cleanQuery ||
+                username.startsWith(cleanQuery) ||
                 username.contains(cleanQuery) ||
-                email.contains(cleanQuery) ||
-                emailHandle.contains(cleanQuery) ||
-                nameHandle.contains(cleanQuery) ||
-                u.about.toLowerCase().contains(cleanQuery);
+                email == raw ||
+                email == cleanQuery ||
+                email.startsWith(raw) ||
+                emailPrefix == cleanQuery;
           })
           .toList();
     } catch (e) {

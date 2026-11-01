@@ -109,8 +109,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final results = await APIs.searchUsers(query);
         if (mounted) {
           setState(() {
+            // Only show users in global search who are NOT already connected conversations
             _globalSearchResults = results
-                .where((u) => !_list.any((local) => local.id == u.id))
+                .where((u) =>
+                    !ConversationController.isConnected(u.id) &&
+                    !ChatSettingsController.isPinned(u.id))
                 .toList();
             _isLoadingGlobal = false;
           });
@@ -154,42 +157,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 return ValueListenableBuilder<Map<String, Message>>(
                   valueListenable: ConversationController.lastMessagesNotifier,
                   builder: (context, lastMessagesMap, _) {
-                    final onlineCount =
-                        _list.where((u) => u.isOnline).length;
-                    final unreadCount = _list
-                        .where((u) => ConversationController.isUnread(u.id))
-                        .length;
-                    final mediaCount = _list
-                        .where((u) => ConversationController.hasMedia(u.id))
-                        .length;
-                    final totalCount = _list.length;
-
-                    // Apply filter & search query
-                    List<ChatUser> localFiltered = List.from(_list);
-
-                    if (_selectedFilter == HomeFilter.unread) {
-                      localFiltered = localFiltered
-                          .where((u) => ConversationController.isUnread(u.id))
-                          .toList();
-                    } else if (_selectedFilter == HomeFilter.online) {
-                      localFiltered =
-                          localFiltered.where((u) => u.isOnline).toList();
-                    } else if (_selectedFilter == HomeFilter.media) {
-                      localFiltered = localFiltered
-                          .where((u) => ConversationController.hasMedia(u.id))
-                          .toList();
-                    }
-
-                    if (_searchQuery.isNotEmpty) {
-                      localFiltered = localFiltered
-                          .where((u) =>
-                              u.name.toLowerCase().contains(_searchQuery) ||
-                              u.username.toLowerCase().contains(_searchQuery) ||
-                              u.email.toLowerCase().contains(_searchQuery) ||
-                              u.about.toLowerCase().contains(_searchQuery))
-                          .toList();
-                    }
-
                     return ValueListenableBuilder<Set<String>>(
                       valueListenable: ChatSettingsController.pinnedNotifier,
                       builder: (context, pinnedSet, _) {
@@ -197,6 +164,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           valueListenable:
                               ConversationController.lastMessageTimesNotifier,
                           builder: (context, messageTimes, _) {
+                            // Filter ONLY connected users:
+                            // Users who have exchanged at least 1 message or are pinned.
+                            // Accounts that never messaged are treated as NOT connected.
+                            final connectedUsers = _list.where((u) {
+                              final int time = messageTimes[u.id] ?? 0;
+                              final bool hasMessage =
+                                  time > 0 || lastMessagesMap[u.id] != null;
+                              final bool isPinned = pinnedSet.contains(u.id);
+                              return hasMessage || isPinned;
+                            }).toList();
+
+                            final onlineCount =
+                                connectedUsers.where((u) => u.isOnline).length;
+                            final unreadCount = connectedUsers
+                                .where((u) => ConversationController.isUnread(u.id))
+                                .length;
+                            final mediaCount = connectedUsers
+                                .where((u) => ConversationController.hasMedia(u.id))
+                                .length;
+                            final totalCount = connectedUsers.length;
+
+                            // Apply filter & search query
+                            List<ChatUser> localFiltered = List.from(connectedUsers);
+
+                            if (_selectedFilter == HomeFilter.unread) {
+                              localFiltered = localFiltered
+                                  .where((u) => ConversationController.isUnread(u.id))
+                                  .toList();
+                            } else if (_selectedFilter == HomeFilter.online) {
+                              localFiltered =
+                                  localFiltered.where((u) => u.isOnline).toList();
+                            } else if (_selectedFilter == HomeFilter.media) {
+                              localFiltered = localFiltered
+                                  .where((u) => ConversationController.hasMedia(u.id))
+                                  .toList();
+                            }
+
+                            if (_searchQuery.isNotEmpty) {
+                              final cleanQuery =
+                                  _searchQuery.replaceAll('@', '');
+                              localFiltered = localFiltered
+                                  .where((u) =>
+                                      u.username
+                                          .toLowerCase()
+                                          .contains(cleanQuery) ||
+                                      u.email
+                                          .toLowerCase()
+                                          .contains(cleanQuery) ||
+                                      u.name
+                                          .toLowerCase()
+                                          .contains(cleanQuery))
+                                  .toList();
+                            }
+
                             // Sort conversations:
                             // 1. Pinned conversations to the top
                             // 2. Latest chat timestamp descending (most recent chat on top)
@@ -230,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             });
 
                             return _buildScrollableContent(
+                              connectedUsers: connectedUsers,
                               localFiltered: localFiltered,
                               totalCount: totalCount,
                               unreadCount: unreadCount,
@@ -466,10 +488,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _activeNowTray(List<ChatUser> users) {
     if (users.isEmpty) return const SizedBox.shrink();
 
+    // Show ONLY connected friends who are actively online right now
     final onlineList = users.where((u) => u.isOnline).toList();
-    final displayList =
-        onlineList.isNotEmpty ? onlineList : users.take(12).toList();
-    final bool hasLiveOnline = onlineList.isNotEmpty;
+    if (onlineList.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 4),
@@ -484,28 +505,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: hasLiveOnline
-                        ? AppTheme.success
-                        : (context.isDark
-                            ? const Color(0xFF555555)
-                            : const Color(0xFF999999)),
+                    color: AppTheme.success,
                     shape: BoxShape.circle,
-                    boxShadow: hasLiveOnline
-                        ? [
-                            BoxShadow(
-                              color: AppTheme.success.withValues(alpha: 0.5),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            )
-                          ]
-                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.success.withValues(alpha: 0.5),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      )
+                    ],
                   ),
                 ),
                 AppSpacing.gapW8,
                 Text(
-                  hasLiveOnline
-                      ? 'ACTIVE NOW (${onlineList.length})'
-                      : 'RECENT FRIENDS',
+                  'ACTIVE NOW (${onlineList.length})',
                   style: TextStyle(
                     fontFamily: AppTypography.fontFamily,
                     fontSize: 11,
@@ -524,9 +537,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              itemCount: displayList.length,
+              itemCount: onlineList.length,
               itemBuilder: (context, index) {
-                final user = displayList[index];
+                final user = onlineList[index];
                 final firstName = user.name.split(' ').first;
 
                 return InkWell(
@@ -749,6 +762,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Main Unified Scrollable Content
   Widget _buildScrollableContent({
+    required List<ChatUser> connectedUsers,
     required List<ChatUser> localFiltered,
     required int totalCount,
     required int unreadCount,
@@ -772,7 +786,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // Quick Search Trigger Pill & Active Friends (Scroll with list, hidden during active search)
         if (!_isSearching) ...[
           _searchTriggerPill(),
-          _activeNowTray(_list),
+          _activeNowTray(connectedUsers),
         ],
 
         // Filter Chips Bar (Chat Folders)
@@ -850,7 +864,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       size: 15, color: context.textPrimaryColor),
                   AppSpacing.gapW6,
                   Text(
-                    'GLOBAL DIRECTORY (${_globalSearchResults.length})',
+                    'GLOBAL SEARCH (${_globalSearchResults.length})',
                     style: TextStyle(
                       fontFamily: AppTypography.fontFamily,
                       fontSize: 12,

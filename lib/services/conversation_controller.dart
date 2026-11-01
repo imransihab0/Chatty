@@ -78,6 +78,14 @@ class ConversationController {
     return msg.type == Type.image || msg.type == Type.audio;
   }
 
+  /// Checks if a user has ever messaged or exchanged a conversation item
+  static bool isConnected(String userId) {
+    final time = getLastMessageTime(userId);
+    if (time > 0) return true;
+    final msg = lastMessageFor(userId);
+    return msg != null;
+  }
+
   /// Sets the exact timestamp for a user
   static void setLastMessageTime(String userId, int timestamp) {
     final current = Map<String, int>.from(lastMessageTimesNotifier.value);
