@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
@@ -136,6 +137,280 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Clipboard.setData(ClipboardData(text: text));
     AppHaptics.light();
     Dialogs.showSnackbar(context, '$label copied to clipboard');
+  }
+
+  void _showEditUsernameSheet() {
+    AppHaptics.light();
+    final TextEditingController usernameController =
+        TextEditingController(text: widget.user.username);
+    Timer? debounce;
+    bool isChecking = false;
+    bool? isAvailable;
+    String status = '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetBuilderCtx, setSheetState) {
+            void checkUsername(String val) {
+              debounce?.cancel();
+              final clean = val.trim().toLowerCase().replaceAll('@', '');
+
+              if (clean == widget.user.username.toLowerCase()) {
+                setSheetState(() {
+                  isChecking = false;
+                  isAvailable = null;
+                  status = 'This is your current username.';
+                });
+                return;
+              }
+
+              if (clean.length < 3) {
+                setSheetState(() {
+                  isChecking = false;
+                  isAvailable = false;
+                  status = 'Must be at least 3 characters.';
+                });
+                return;
+              }
+
+              if (clean.length > 20) {
+                setSheetState(() {
+                  isChecking = false;
+                  isAvailable = false;
+                  status = 'Cannot exceed 20 characters.';
+                });
+                return;
+              }
+
+              if (!RegExp(r'^[a-z0-9_]+$').hasMatch(clean)) {
+                setSheetState(() {
+                  isChecking = false;
+                  isAvailable = false;
+                  status = 'Letters, numbers, and underscores only.';
+                });
+                return;
+              }
+
+              setSheetState(() {
+                isChecking = true;
+                status = 'Checking availability...';
+              });
+
+              debounce = Timer(const Duration(milliseconds: 300), () async {
+                final available = await APIs.isUsernameAvailable(clean);
+                if (!sheetContext.mounted) return;
+                setSheetState(() {
+                  isChecking = false;
+                  isAvailable = available;
+                  status = available
+                      ? '✓ @$clean is available'
+                      : '❌ @$clean is already taken';
+                });
+              });
+            }
+
+            final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+            final canSave = isAvailable == true && !isChecking;
+
+            return Container(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomInset),
+              decoration: BoxDecoration(
+                color: sheetBuilderCtx.surfaceColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: sheetBuilderCtx.borderColor, width: 0.8),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: sheetBuilderCtx.borderColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        'Edit Username',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: sheetBuilderCtx.textPrimaryColor,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(Icons.close_rounded,
+                            color: sheetBuilderCtx.textSecondaryColor),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Choose a unique handle so people can find you. Letters, numbers, and underscores (3-20 characters).',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: sheetBuilderCtx.textSecondaryColor,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: sheetBuilderCtx.surfaceMutedColor,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isAvailable == true
+                            ? AppTheme.success
+                            : (isAvailable == false && !isChecking)
+                                ? AppTheme.danger
+                                : sheetBuilderCtx.borderColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          '@',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: sheetBuilderCtx.textPrimaryColor,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: TextField(
+                            controller: usernameController,
+                            autofocus: true,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[a-zA-Z0-9_]')),
+                              LengthLimitingTextInputFormatter(20),
+                            ],
+                            onChanged: checkUsername,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: sheetBuilderCtx.textPrimaryColor,
+                            ),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'username',
+                            ),
+                          ),
+                        ),
+                        if (isChecking)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else if (isAvailable == true)
+                          const Icon(Icons.check_circle_rounded,
+                              color: AppTheme.success, size: 18)
+                        else if (isAvailable == false)
+                          const Icon(Icons.error_outline_rounded,
+                              color: AppTheme.danger, size: 18),
+                      ],
+                    ),
+                  ),
+                  if (status.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 4),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isAvailable == true
+                              ? AppTheme.success
+                              : (isAvailable == false && !isChecking)
+                                  ? AppTheme.danger
+                                  : sheetBuilderCtx.textMutedColor,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 22),
+                  ElevatedButton(
+                    onPressed: canSave
+                        ? () async {
+                            final clean = usernameController.text
+                                .trim()
+                                .toLowerCase()
+                                .replaceAll('@', '');
+                            Navigator.pop(sheetContext);
+                            final success = await APIs.updateUsername(clean);
+                            if (!mounted) return;
+                            if (success) {
+                              setState(() {
+                                widget.user.username = clean;
+                              });
+                              Dialogs.showSnackbar(
+                                  context, 'Username updated to @$clean');
+                            } else {
+                              Dialogs.showSnackbar(context,
+                                  'Failed to update username. Try another.');
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          sheetBuilderCtx.isDark ? Colors.white : Colors.black,
+                      foregroundColor:
+                          sheetBuilderCtx.isDark ? Colors.black : Colors.white,
+                      disabledBackgroundColor: (sheetBuilderCtx.isDark
+                              ? Colors.white
+                              : Colors.black)
+                          .withValues(alpha: 0.35),
+                      disabledForegroundColor: (sheetBuilderCtx.isDark
+                              ? Colors.black
+                              : Colors.white)
+                          .withValues(alpha: 0.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Save Username',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showPhotoPickerSheet() {
@@ -554,11 +829,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               initialValue: widget.user.name,
                               textInputAction: TextInputAction.next,
                               scrollPadding: const EdgeInsets.only(bottom: 80),
+                              inputFormatters: [
+                                LengthLimitingTextInputFormatter(25),
+                              ],
+                              maxLength: 25,
+                              buildCounter: (_,
+                                      {required currentLength,
+                                      required isFocused,
+                                      maxLength}) =>
+                                  null,
                               onSaved: (val) => APIs.me.name = val ?? '',
-                              validator: (val) =>
-                                  val != null && val.trim().isNotEmpty
-                                      ? null
-                                      : 'Name cannot be empty',
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return 'Name cannot be empty';
+                                }
+                                if (val.trim().length > 25) {
+                                  return 'Name cannot exceed 25 characters';
+                                }
+                                return null;
+                              },
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 15,
@@ -570,7 +859,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 contentPadding:
                                     const EdgeInsets.only(top: 4, bottom: 2),
                                 border: InputBorder.none,
-                                hintText: 'Enter your name',
+                                hintText: 'Enter your name (max 25)',
                                 hintStyle: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 14,
@@ -648,7 +937,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 _buildDivider(context),
 
-                // Username (@handle with 'Tap to copy' feedback)
+                // Username (@handle with Edit option)
                 ListTile(
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -657,28 +946,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.alternate_email_rounded,
                   ),
                   title: Text(
-                    usernameHandle,
+                    '@${widget.user.username.isNotEmpty ? widget.user.username : (APIs.me.username.isNotEmpty ? APIs.me.username : usernameHandle.replaceAll('@', ''))}',
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 15,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       color: context.textPrimaryColor,
                     ),
                   ),
                   subtitle: Text(
-                    'Username · Tap to copy',
+                    'Unique Username · Tap to edit',
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 11,
                       color: context.textMutedColor,
                     ),
                   ),
-                  trailing: Icon(
-                    Icons.copy_rounded,
-                    size: 16,
-                    color: context.textMutedColor,
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: context.primarySoftColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Edit',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimaryColor,
+                      ),
+                    ),
                   ),
-                  onTap: () => _copyToClipboard(usernameHandle, 'Username'),
+                  onTap: _showEditUsernameSheet,
                 ),
                 _buildDivider(context),
 
@@ -1209,7 +1510,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: Icons.alternate_email_rounded,
                     ),
                     title: Text(
-                      usernameHandle,
+                      user.username.isNotEmpty
+                          ? '@${user.username}'
+                          : usernameHandle,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 15,
@@ -1218,7 +1521,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      'Username · Tap to copy',
+                      'Unique Username · Tap to copy',
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 11,
@@ -1230,7 +1533,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       size: 16,
                       color: context.textMutedColor,
                     ),
-                    onTap: () => _copyToClipboard(usernameHandle, 'Username'),
+                    onTap: () {
+                      final handle = user.username.isNotEmpty
+                          ? '@${user.username}'
+                          : usernameHandle;
+                      _copyToClipboard(handle, 'Username');
+                    },
                   ),
                   _buildDivider(context),
                   ListTile(

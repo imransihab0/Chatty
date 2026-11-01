@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:math' show Random;
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/models/message.dart';
 import 'package:chatty/services/conversation_controller.dart';
@@ -67,29 +68,107 @@ class APIs{
     }
   }
 
-  //for creating a new user
-  static Future<void> createUser() async {
+  // Check if a username is available (unique in Firestore)
+  static Future<bool> isUsernameAvailable(String username) async {
+    final clean = username.trim().toLowerCase().replaceAll('@', '');
+    if (clean.length < 3 || clean.length > 20) return false;
+    if (!RegExp(r'^[a-z0-9_]+$').hasMatch(clean)) return false;
+
+    try {
+      final snap = await firestore
+          .collection('users')
+          .where('username', isEqualTo: clean)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) return true;
+      return snap.docs.first.id == (auth.currentUser?.uid ?? '');
+    } catch (e) {
+      log('Error isUsernameAvailable: $e');
+      return false;
+    }
+  }
+
+  // Generates a random unique username fallback
+  static Future<String> generateUniqueUsername(String? base) async {
+    String clean = (base ?? 'user')
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    if (clean.isEmpty) clean = 'user';
+    if (clean.length > 14) clean = clean.substring(0, 14);
+
+    if (await isUsernameAvailable(clean)) return clean;
+
+    final random = Random();
+    for (int i = 0; i < 20; i++) {
+      final candidate = '${clean}_${random.nextInt(9000) + 1000}';
+      if (await isUsernameAvailable(candidate)) return candidate;
+    }
+
+    return 'user_${DateTime.now().millisecondsSinceEpoch % 1000000}';
+  }
+
+  //for creating a new user with optional chosen username
+  static Future<void> createUser({String? chosenUsername}) async {
     final curUser = auth.currentUser;
     if (curUser == null) return;
     try {
       final time = DateTime.now().millisecondsSinceEpoch.toString();
+      String rawName = (curUser.displayName != null &&
+              curUser.displayName!.trim().isNotEmpty)
+          ? curUser.displayName!.trim()
+          : (curUser.email?.split('@').first ?? 'User');
+      if (rawName.length > 25) rawName = rawName.substring(0, 25);
+
+      String finalUsername = chosenUsername
+              ?.trim()
+              .toLowerCase()
+              .replaceAll(RegExp(r'[^a-z0-9_]'), '') ??
+          '';
+      if (finalUsername.isEmpty ||
+          !(await isUsernameAvailable(finalUsername))) {
+        finalUsername = await generateUniqueUsername(
+            curUser.email?.split('@').first);
+      }
+
       final chatUser = ChatUser(
         image: curUser.photoURL ?? '',
         about: "Hey, I'm using Chatty!",
-        name: (curUser.displayName != null &&
-                curUser.displayName!.trim().isNotEmpty)
-            ? curUser.displayName!.trim()
-            : (curUser.email?.split('@').first ?? 'User'),
+        name: rawName,
         createdAt: time,
         isOnline: true,
         lastActive: time,
         id: curUser.uid,
         email: curUser.email ?? '',
         pushToken: '',
+        username: finalUsername,
       );
-      await firestore.collection('users').doc(curUser.uid).set(chatUser.toJson());
+      await firestore
+          .collection('users')
+          .doc(curUser.uid)
+          .set(chatUser.toJson());
+      me = chatUser;
     } catch (e) {
       log('Error createUser: $e');
+    }
+  }
+
+  // for updating username
+  static Future<bool> updateUsername(String newUsername) async {
+    final clean = newUsername.trim().toLowerCase().replaceAll('@', '');
+    if (!(await isUsernameAvailable(clean))) return false;
+    if (auth.currentUser == null) return false;
+
+    try {
+      await firestore.collection('users').doc(user.uid).update({
+        'username': clean,
+      });
+      me.username = clean;
+      return true;
+    } catch (e) {
+      log('Error updateUsername: $e');
+      return false;
     }
   }
 
@@ -105,6 +184,7 @@ class APIs{
   //for updating current user info
   static Future<void> updateUserInfo() async {
     if (auth.currentUser == null) return;
+    if (me.name.length > 25) me.name = me.name.substring(0, 25);
     await firestore.collection('users').doc(user.uid).update({
       'name': me.name,
       'about': me.about,
@@ -385,11 +465,13 @@ class APIs{
           .map((e) => ChatUser.fromJson(e.data()))
           .where((u) {
             final name = u.name.toLowerCase();
+            final username = u.username.toLowerCase();
             final email = u.email.toLowerCase();
             final emailHandle =
                 email.contains('@') ? email.split('@').first : email;
             final nameHandle = name.replaceAll(' ', '');
             return name.contains(cleanQuery) ||
+                username.contains(cleanQuery) ||
                 email.contains(cleanQuery) ||
                 emailHandle.contains(cleanQuery) ||
                 nameHandle.contains(cleanQuery) ||

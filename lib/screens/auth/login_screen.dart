@@ -6,6 +6,7 @@ import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/main.dart';
+import 'package:chatty/screens/auth/username_setup_screen.dart';
 import 'package:chatty/screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -35,14 +36,15 @@ class _LoginScreenState extends State<LoginScreen> {
       log('\nUserAdditionalInfo: ${user.additionalUserInfo}');
 
       if (await APIs.userExists()) {
+        await APIs.getMyInfo();
         if (!mounted) return;
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (_) => const HomeScreen()));
       } else {
-        await APIs.createUser();
+        // Brand new user signing up with Google - ask to select username
         if (!mounted) return;
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+            context, MaterialPageRoute(builder: (_) => const UsernameSetupScreen()));
       }
     }
   }

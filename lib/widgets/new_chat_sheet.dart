@@ -248,9 +248,11 @@ class _NewChatSheetState extends State<NewChatSheet> {
         ),
         itemBuilder: (context, index) {
           final user = _results[index];
-          final handle = user.email.isNotEmpty
-              ? '@${user.email.split('@').first}'
-              : '@${user.name.toLowerCase().replaceAll(' ', '')}';
+          final handle = user.username.isNotEmpty
+              ? '@${user.username}'
+              : (user.email.isNotEmpty
+                  ? '@${user.email.split('@').first}'
+                  : '@${user.name.toLowerCase().replaceAll(' ', '')}');
 
           return InkWell(
             onTap: () => _openChatWithUser(user),

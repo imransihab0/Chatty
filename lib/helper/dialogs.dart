@@ -225,11 +225,33 @@ class _TelegramToastWidgetState extends State<_TelegramToastWidget>
                         ? Icons.check_circle_rounded
                         : Icons.info_outline_rounded);
 
+    final bool isDark = context.isDark;
+
+    // Toast capsule styling: white in dark mode, dark in light mode
+    final Color capsuleColor = isDark
+        ? Colors.white.withValues(alpha: 0.96)
+        : const Color(0xFF18181B).withValues(alpha: 0.94);
+
+    final Color textColor = isDark ? const Color(0xFF09090B) : Colors.white;
+
     final Color iconColor = isError
-        ? const Color(0xFFEF4444)
+        ? (isDark ? const Color(0xFFDC2626) : const Color(0xFFEF4444))
         : isSuccess
-            ? const Color(0xFF22C55E)
-            : Colors.white;
+            ? (isDark ? const Color(0xFF16A34A) : const Color(0xFF22C55E))
+            : (isDark ? const Color(0xFF09090B) : Colors.white);
+
+    final Border border = isDark
+        ? Border.all(color: Colors.black.withValues(alpha: 0.10), width: 0.8)
+        : Border.all(color: Colors.white.withValues(alpha: 0.14), width: 0.8);
+
+    final List<BoxShadow> shadows = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.22),
+        blurRadius: 18,
+        spreadRadius: 1,
+        offset: const Offset(0, 6),
+      ),
+    ];
 
     return SafeArea(
       top: true,
@@ -260,20 +282,10 @@ class _TelegramToastWidgetState extends State<_TelegramToastWidget>
                         maxWidth: 380,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF18181B).withValues(alpha: 0.92),
+                        color: capsuleColor,
                         borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          width: 0.8,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.28),
-                            blurRadius: 18,
-                            spreadRadius: 1,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                        border: border,
+                        boxShadow: shadows,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(22),
@@ -293,7 +305,8 @@ class _TelegramToastWidgetState extends State<_TelegramToastWidget>
                                   width: 26,
                                   height: 26,
                                   decoration: BoxDecoration(
-                                    color: iconColor.withValues(alpha: 0.16),
+                                    color: iconColor.withValues(
+                                        alpha: isDark ? 0.12 : 0.18),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
@@ -312,11 +325,11 @@ class _TelegramToastWidgetState extends State<_TelegramToastWidget>
                                     widget.message,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
                                       height: 1.25,
                                     ),
                                   ),
