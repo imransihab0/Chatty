@@ -239,12 +239,14 @@ class APIs{
   static Future<void> updateTypingStatus(ChatUser chatUser, bool isTyping) async {
     if (auth.currentUser == null) return;
     try {
+      final now = DateTime.now().millisecondsSinceEpoch;
       await firestore
           .collection('chats')
           .doc(getConversationID(chatUser.id))
           .set({
         'typing_${user.uid}': isTyping,
-        'typing_time': DateTime.now().millisecondsSinceEpoch,
+        'typing_time_${user.uid}': now,
+        'typing_time': now,
       }, SetOptions(merge: true));
     } catch (e) {
       log('Error updateTypingStatus: $e');

@@ -39,6 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Message? _replyMessage;
   Timer? _typingTimer;
   bool _isTyping = false;
+  int _lastTypingSentTime = 0;
 
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _messagesStream;
 
@@ -117,12 +118,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _onTextChanged(String val) {
     if (val.trim().isNotEmpty) {
-      if (!_isTyping) {
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      // Notify typing immediately, and pulse every 1200ms while active
+      if (!_isTyping || (now - _lastTypingSentTime > 1200)) {
         _isTyping = true;
+        _lastTypingSentTime = now;
         APIs.updateTypingStatus(widget.user, true);
       }
       _typingTimer?.cancel();
-      _typingTimer = Timer(const Duration(seconds: 3), () {
+      // Interactive stop-typing detection: 1.4 seconds after stopping typing
+      _typingTimer = Timer(const Duration(milliseconds: 1400), () {
         if (_isTyping) {
           _isTyping = false;
           APIs.updateTypingStatus(widget.user, false);
@@ -948,36 +953,54 @@ class _ChatScreenState extends State<ChatScreen> {
                               stream: APIs.getChatMeta(widget.user),
                               builder: (context, metaSnapshot) {
                                 final metaData = metaSnapshot.data?.data();
-                                final bool isOtherTyping =
+                                final bool isTypingRaw =
                                     metaData?['typing_${widget.user.id}'] ==
                                         true;
+                                final int lastTypingTime = metaData?[
+                                            'typing_time_${widget.user.id}']
+                                        is int
+                                    ? metaData![
+                                            'typing_time_${widget.user.id}']
+                                        as int
+                                    : (metaData?['typing_time'] is int
+                                        ? metaData!['typing_time'] as int
+                                        : 0);
+                                final int now =
+                                    DateTime.now().millisecondsSinceEpoch;
+                                final bool isOtherTyping = isTypingRaw &&
+                                    (lastTypingTime == 0 ||
+                                        (now - lastTypingTime < 2400));
 
-                                if (isOtherTyping) {
-                                  return const TypingWaveDots(
-                                    dotSize: 3.5,
-                                    label: 'typing...',
-                                    showLabel: true,
-                                  );
-                                }
-
-                                return Text(
-                                  currentUser.isOnline
-                                      ? 'Active now'
-                                      : MyDateUtil.getLastActiveTime(
-                                          context: context,
-                                          lastActive: currentUser.lastActive),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: currentUser.isOnline
-                                        ? AppTheme.success
-                                        : (context.isDark
-                                            ? const Color(0xFFA1A1AA)
-                                            : const Color(0xFF71717A)),
-                                  ),
+                                return AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 180),
+                                  child: isOtherTyping
+                                      ? const TypingWaveDots(
+                                          key: ValueKey('typing'),
+                                          dotSize: 3.5,
+                                          label: 'typing',
+                                          showLabel: true,
+                                        )
+                                      : Text(
+                                          currentUser.isOnline
+                                              ? 'Active now'
+                                              : MyDateUtil.getLastActiveTime(
+                                                  context: context,
+                                                  lastActive:
+                                                      currentUser.lastActive),
+                                          key: const ValueKey('status'),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: currentUser.isOnline
+                                                ? AppTheme.success
+                                                : (context.isDark
+                                                    ? const Color(0xFFA1A1AA)
+                                                    : const Color(0xFF71717A)),
+                                          ),
+                                        ),
                                 );
                               },
                             ),

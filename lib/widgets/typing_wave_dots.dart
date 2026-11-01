@@ -14,7 +14,7 @@ class TypingWaveDots extends StatefulWidget {
     this.color,
     this.dotSize = 4.0,
     this.showLabel = true,
-    this.label = 'typing...',
+    this.label = 'typing',
   });
 
   @override

@@ -415,15 +415,29 @@ class _ChatUserCardState extends State<ChatUserCard>
                                   stream: _chatMetaStream,
                                   builder: (context, metaSnap) {
                                     final metaData = metaSnap.data?.data();
-                                    final bool isTyping = metaData?[
+                                    final bool isTypingRaw = metaData?[
                                             'typing_${widget.user.id}'] ==
                                         true;
+                                    final int lastTypingTime = metaData?[
+                                                'typing_time_${widget.user.id}']
+                                            is int
+                                        ? metaData![
+                                                'typing_time_${widget.user.id}']
+                                            as int
+                                        : (metaData?['typing_time'] is int
+                                            ? metaData!['typing_time'] as int
+                                            : 0);
+                                    final int now =
+                                        DateTime.now().millisecondsSinceEpoch;
+                                    final bool isTyping = isTypingRaw &&
+                                        (lastTypingTime == 0 ||
+                                            (now - lastTypingTime < 2400));
 
                                     if (isTyping) {
                                       return const TypingWaveDots(
-                                        dotSize: 4.5,
+                                        dotSize: 4.0,
                                         showLabel: true,
-                                        label: 'typing...',
+                                        label: 'typing',
                                       );
                                     }
 
