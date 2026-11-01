@@ -312,16 +312,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
         IconButton(
           splashRadius: 22,
-          tooltip: 'Search friends',
-          onPressed: _startSearch,
-          icon: Icon(
-            Icons.search_rounded,
-            color: context.textPrimaryColor,
-            size: 22,
-          ),
-        ),
-        IconButton(
-          splashRadius: 22,
           tooltip: 'New Chat',
           onPressed: () => NewChatSheet.show(context),
           icon: Icon(
