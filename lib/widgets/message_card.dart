@@ -481,15 +481,17 @@ class _MessageCardState extends State<MessageCard> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isMe
-            ? Colors.black.withValues(alpha: 0.18)
-            : context.surfaceMutedColor,
-        borderRadius: BorderRadius.circular(10),
+            ? Colors.white.withValues(alpha: 0.12)
+            : (context.isDark
+                ? const Color(0xFF141416)
+                : const Color(0xFFDDDEE3)),
+        borderRadius: BorderRadius.circular(9),
         border: Border(
           left: BorderSide(
             color: isMe
                 ? Colors.white
                 : (context.isDark ? Colors.white : Colors.black),
-            width: 3.5,
+            width: 3.0,
           ),
         ),
       ),
@@ -522,7 +524,7 @@ class _MessageCardState extends State<MessageCard> {
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: isMe
-                  ? Colors.white.withValues(alpha: 0.95)
+                  ? Colors.white.withValues(alpha: 0.90)
                   : (context.isDark
                       ? const Color(0xFFD4D4D8)
                       : const Color(0xFF3F3F46)),
@@ -572,6 +574,260 @@ class _MessageCardState extends State<MessageCard> {
     return RichText(text: TextSpan(children: spans));
   }
 
+  Widget _buildTimestampRow({
+    required bool isMe,
+    required String sentTime,
+    required bool isRead,
+    required TextStyle timeStyle,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          sentTime,
+          style: timeStyle,
+        ),
+        if (isMe) ...[
+          const SizedBox(width: 3.5),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
+            child: isRead
+                ? const Icon(
+                    Icons.done_all_rounded,
+                    key: ValueKey('read'),
+                    color: AppTheme.success,
+                    size: 13.5,
+                  )
+                : Icon(
+                    Icons.done_rounded,
+                    key: const ValueKey('sent'),
+                    color: Colors.white.withValues(alpha: 0.70),
+                    size: 13.5,
+                  ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTextMessage(bool isMe) {
+    final text = widget.message.msg;
+    final sentTime = MyDateUtil.getFormattedTime(
+        context: context, time: widget.message.sent);
+    final isRead = widget.message.read.isNotEmpty;
+    final hasLink = _urlRegex.hasMatch(text);
+    final hasReply = widget.message.replyMsg.isNotEmpty;
+
+    final TextStyle textStyle = TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 15,
+      height: 1.35,
+      color: isMe
+          ? Colors.white
+          : (context.isDark
+              ? const Color(0xFFF4F4F5)
+              : const Color(0xFF09090B)),
+    );
+
+    final TextStyle timeStyle = TextStyle(
+      fontFamily: 'Lexend',
+      fontSize: 10,
+      fontWeight: FontWeight.w500,
+      color: isMe
+          ? Colors.white.withValues(alpha: 0.65)
+          : (context.isDark
+              ? const Color(0xFFA1A1AA)
+              : const Color(0xFF71717A)),
+    );
+
+    final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.76;
+    // Account for horizontal bubble padding (13 * 2 = 26)
+    final maxTextWidth = maxBubbleWidth - 26;
+
+    // Check if the text is a single line and can fit on the same line as the timestamp
+    bool fitsOnSingleLine = false;
+    if (!hasLink && !hasReply && !text.contains('\n')) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: text, style: textStyle),
+        maxLines: 1,
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      // Timestamp row width: ~68px for me (time + checkmarks), ~48px for other
+      final timestampWidth = isMe ? 68.0 : 48.0;
+      const spacing = 8.0;
+
+      if (textPainter.width + timestampWidth + spacing <= maxTextWidth) {
+        fitsOnSingleLine = true;
+      }
+    }
+
+    if (fitsOnSingleLine) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: _buildHighlightedText(
+              text: text,
+              baseStyle: textStyle,
+              highlightColor: isMe
+                  ? Colors.white.withValues(alpha: 0.25)
+                  : (context.isDark
+                      ? const Color(0xFF333333)
+                      : const Color(0xFFE4E4E7)),
+              highlightTextColor:
+                  isMe ? Colors.white : context.textPrimaryColor,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 1),
+            child: _buildTimestampRow(
+              isMe: isMe,
+              sentTime: sentTime,
+              isRead: isRead,
+              timeStyle: timeStyle,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Multi-line layout
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildHighlightedText(
+          text: text,
+          baseStyle: textStyle,
+          highlightColor: isMe
+              ? Colors.white.withValues(alpha: 0.25)
+              : (context.isDark
+                  ? const Color(0xFF333333)
+                  : const Color(0xFFE4E4E7)),
+          highlightTextColor: isMe ? Colors.white : context.textPrimaryColor,
+        ),
+        if (hasLink) _buildLinkPreviewIfNeeded(text, isMe),
+        const SizedBox(height: 2),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: _buildTimestampRow(
+            isMe: isMe,
+            sentTime: sentTime,
+            isRead: isRead,
+            timeStyle: timeStyle,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageMessage(bool isMe) {
+    final sentTime = MyDateUtil.getFormattedTime(
+        context: context, time: widget.message.sent);
+    final isRead = widget.message.read.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MediaViewerScreen(
+              imageUrl: widget.message.msg,
+              heroTag: 'msg_img_${widget.message.sent}',
+              title: isMe ? 'You' : 'Photo',
+              timestamp: sentTime,
+            ),
+          ),
+        );
+      },
+      child: Hero(
+        tag: 'msg_img_${widget.message.sent}',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: widget.message.msg,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  width: double.infinity,
+                  color: isMe
+                      ? Colors.white24
+                      : context.surfaceMutedColor,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isMe ? Colors.white : context.textPrimaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 120,
+                  width: double.infinity,
+                  color: isMe
+                      ? Colors.white24
+                      : context.surfaceMutedColor,
+                  child: Icon(
+                    Icons.broken_image,
+                    size: 40,
+                    color: isMe ? Colors.white70 : context.textMutedColor,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 6,
+                right: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        sentTime,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 3.5),
+                        Icon(
+                          isRead
+                              ? Icons.done_all_rounded
+                              : Icons.done_rounded,
+                          color: isRead
+                              ? AppTheme.success
+                              : Colors.white.withValues(alpha: 0.85),
+                          size: 13,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // Sent by other person (Left aligned)
   Widget _otherMessage() {
     if (widget.message.read.isEmpty) {
@@ -585,7 +841,7 @@ class _MessageCardState extends State<MessageCard> {
             bottom: widget.message.reaction.isNotEmpty ? 8 : 0),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minWidth: widget.message.reaction.isNotEmpty ? 92 : 0,
+            minWidth: widget.message.reaction.isNotEmpty ? 80 : 0,
             maxWidth: MediaQuery.sizeOf(context).width * 0.76,
           ),
           child: Stack(
@@ -594,21 +850,20 @@ class _MessageCardState extends State<MessageCard> {
               Container(
                 decoration: BoxDecoration(
                   color: context.isDark
-                      ? const Color(0xFF222224)
-                      : context.surfaceColor,
+                      ? const Color(0xFF1E1E22)
+                      : const Color(0xFFE9E9EB),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(18),
                     topRight: Radius.circular(18),
                     bottomRight: Radius.circular(18),
                     bottomLeft: Radius.circular(4),
                   ),
-                  border: Border.all(
-                    color: context.isDark
-                        ? const Color(0xFF2E2E32)
-                        : context.borderColor,
-                    width: 0.8,
-                  ),
-                  boxShadow: context.softShadow,
+                  border: context.isDark
+                      ? Border.all(
+                          color: const Color(0xFF2E2E32),
+                          width: 0.6,
+                        )
+                      : null,
                 ),
                 child: Padding(
                   padding: (widget.message.type == Type.image &&
@@ -617,29 +872,14 @@ class _MessageCardState extends State<MessageCard> {
                       : (widget.message.type == Type.audio &&
                               widget.message.replyMsg.isEmpty)
                           ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
-                          : const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                          : const EdgeInsets.fromLTRB(13, 8, 13, 7),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _replyQuoteHeader(false),
-                      if (widget.message.type == Type.text) ...[
-                        _buildHighlightedText(
-                          text: widget.message.msg,
-                          baseStyle: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 15,
-                            color: context.textPrimaryColor,
-                            height: 1.35,
-                          ),
-                          highlightColor: context.isDark
-                              ? const Color(0xFF333333)
-                              : const Color(0xFFE4E4E7),
-                          highlightTextColor: context.textPrimaryColor,
-                        ),
-                        _buildLinkPreviewIfNeeded(widget.message.msg, false),
-                      ]
+                      if (widget.message.type == Type.text)
+                        _buildTextMessage(false)
                       else if (widget.message.type == Type.audio)
                         AudioWaveformPlayer(
                           isMe: false,
@@ -650,98 +890,7 @@ class _MessageCardState extends State<MessageCard> {
                           isRead: widget.message.read.isNotEmpty,
                         )
                       else
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => MediaViewerScreen(
-                                  imageUrl: widget.message.msg,
-                                  heroTag: 'msg_img_${widget.message.sent}',
-                                  title: 'Photo',
-                                  timestamp: MyDateUtil.getFormattedTime(
-                                      context: context,
-                                      time: widget.message.sent),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            tag: 'msg_img_${widget.message.sent}',
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Stack(
-                                children: [
-                                  CachedNetworkImage(
-                                    imageUrl: widget.message.msg,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      height: 200,
-                                      width: double.infinity,
-                                      color: context.surfaceMutedColor,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                      height: 120,
-                                      width: double.infinity,
-                                      color: context.surfaceMutedColor,
-                                      child: Icon(Icons.broken_image,
-                                          size: 40,
-                                          color: context.textMutedColor),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 6,
-                                    right: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.6),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        MyDateUtil.getFormattedTime(
-                                            context: context,
-                                            time: widget.message.sent),
-                                        style: const TextStyle(
-                                          fontFamily: 'Lexend',
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (widget.message.type != Type.image &&
-                          widget.message.type != Type.audio) ...[
-                        const SizedBox(height: 3),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Text(
-                            MyDateUtil.getFormattedTime(
-                                context: context, time: widget.message.sent),
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: context.isDark
-                                  ? const Color(0xFFA1A1AA)
-                                  : const Color(0xFF71717A),
-                            ),
-                          ),
-                        ),
-                      ],
+                        _buildImageMessage(false),
                     ],
                   ),
                 ),
@@ -754,10 +903,22 @@ class _MessageCardState extends State<MessageCard> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: context.surfaceColor,
+                      color: context.isDark
+                          ? const Color(0xFF27272A)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.borderColor, width: 1),
-                      boxShadow: context.softShadow,
+                      border: Border.all(
+                          color: context.isDark
+                              ? const Color(0xFF38383C)
+                              : const Color(0xFFE4E4E7),
+                          width: 0.8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Text(
                       widget.message.reaction,
@@ -781,7 +942,7 @@ class _MessageCardState extends State<MessageCard> {
             bottom: widget.message.reaction.isNotEmpty ? 8 : 0),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minWidth: widget.message.reaction.isNotEmpty ? 92 : 0,
+            minWidth: widget.message.reaction.isNotEmpty ? 80 : 0,
             maxWidth: MediaQuery.sizeOf(context).width * 0.76,
           ),
           child: Stack(
@@ -789,17 +950,9 @@ class _MessageCardState extends State<MessageCard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  gradient: context.isDark
-                      ? const LinearGradient(
-                          colors: [Color(0xFF242426), Color(0xFF1C1C1E)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : const LinearGradient(
-                          colors: [Color(0xFF1C1C1E), Color(0xFF09090B)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                  color: context.isDark
+                      ? const Color(0xFF2E2E32)
+                      : const Color(0xFF18181B),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(18),
                     topRight: Radius.circular(18),
@@ -807,17 +960,11 @@ class _MessageCardState extends State<MessageCard> {
                     bottomRight: Radius.circular(4),
                   ),
                   border: context.isDark
-                      ? Border.all(color: const Color(0xFF38383C), width: 0.8)
+                      ? Border.all(
+                          color: const Color(0xFF3F3F46),
+                          width: 0.6,
+                        )
                       : null,
-                  boxShadow: context.isDark
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                 ),
                 child: Padding(
                   padding: (widget.message.type == Type.image &&
@@ -826,27 +973,14 @@ class _MessageCardState extends State<MessageCard> {
                       : (widget.message.type == Type.audio &&
                               widget.message.replyMsg.isEmpty)
                           ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
-                          : const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                          : const EdgeInsets.fromLTRB(13, 8, 13, 7),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _replyQuoteHeader(true),
-                      if (widget.message.type == Type.text) ...[
-                        _buildHighlightedText(
-                          text: widget.message.msg,
-                          baseStyle: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 15,
-                            color: Colors.white,
-                            height: 1.35,
-                          ),
-                          highlightColor: Colors.white.withValues(alpha: 0.25),
-                          highlightTextColor: Colors.white,
-                        ),
-                        _buildLinkPreviewIfNeeded(widget.message.msg, true),
-                      ]
+                      if (widget.message.type == Type.text)
+                        _buildTextMessage(true)
                       else if (widget.message.type == Type.audio)
                         AudioWaveformPlayer(
                           isMe: true,
@@ -857,151 +991,7 @@ class _MessageCardState extends State<MessageCard> {
                           isRead: widget.message.read.isNotEmpty,
                         )
                       else
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => MediaViewerScreen(
-                                  imageUrl: widget.message.msg,
-                                  heroTag: 'msg_img_${widget.message.sent}',
-                                  title: 'You',
-                                  timestamp: MyDateUtil.getFormattedTime(
-                                      context: context,
-                                      time: widget.message.sent),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            tag: 'msg_img_${widget.message.sent}',
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Stack(
-                                children: [
-                                  CachedNetworkImage(
-                                    imageUrl: widget.message.msg,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      height: 200,
-                                      width: double.infinity,
-                                      color: Colors.white24,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  Colors.white),
-                                        ),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                      height: 120,
-                                      width: double.infinity,
-                                      color: Colors.white24,
-                                      child: const Icon(Icons.broken_image,
-                                          size: 40, color: Colors.white70),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 6,
-                                    right: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.6),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            MyDateUtil.getFormattedTime(
-                                                context: context,
-                                                time: widget.message.sent),
-                                            style: const TextStyle(
-                                              fontFamily: 'Lexend',
-                                              fontSize: 10,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 3),
-                                          AnimatedSwitcher(
-                                            duration: const Duration(
-                                                milliseconds: 300),
-                                            transitionBuilder: (child, anim) =>
-                                                ScaleTransition(
-                                                    scale: anim, child: child),
-                                            child: widget.message.read.isNotEmpty
-                                                ? const Icon(
-                                                    Icons.done_all_rounded,
-                                                    key: ValueKey('read'),
-                                                    color: Colors.white,
-                                                    size: 13,
-                                                  )
-                                                : Icon(
-                                                    Icons.done_rounded,
-                                                    key: const ValueKey('sent'),
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.9),
-                                                    size: 13,
-                                                  ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (widget.message.type != Type.image &&
-                          widget.message.type != Type.audio) ...[
-                        const SizedBox(height: 3),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                MyDateUtil.getFormattedTime(
-                                    context: context, time: widget.message.sent),
-                                style: const TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                transitionBuilder: (child, anim) =>
-                                    ScaleTransition(scale: anim, child: child),
-                                child: widget.message.read.isNotEmpty
-                                    ? const Icon(
-                                        Icons.done_all_rounded,
-                                        key: ValueKey('read'),
-                                        color: Colors.white,
-                                        size: 14,
-                                      )
-                                    : Icon(
-                                        Icons.done_rounded,
-                                        key: const ValueKey('sent'),
-                                        color:
-                                            Colors.white.withValues(alpha: 0.9),
-                                        size: 14,
-                                      ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        _buildImageMessage(true),
                     ],
                   ),
                 ),
@@ -1014,10 +1004,22 @@ class _MessageCardState extends State<MessageCard> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: context.surfaceColor,
+                      color: context.isDark
+                          ? const Color(0xFF27272A)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.borderColor, width: 1),
-                      boxShadow: context.softShadow,
+                      border: Border.all(
+                          color: context.isDark
+                              ? const Color(0xFF38383C)
+                              : const Color(0xFFE4E4E7),
+                          width: 0.8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Text(
                       widget.message.reaction,
