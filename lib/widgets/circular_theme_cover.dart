@@ -1,14 +1,15 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:chatty/helper/app_haptics.dart';
-import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:flutter/material.dart';
 
-/// Full-screen circular wide-cover theme swap transition.
+/// Translucent luminous radiant wave theme swap transition.
 ///
-/// Sweeps an expanding circular disk across the entire screen from
-/// the tap origin (like Telegram & modern iOS), cleanly unveiling the
-/// new light/dark theme in a fluid, non-jarring motion.
+/// Sweeps a radiant, glowing shockwave band across the screen from the tap
+/// origin (like an ethereal sonar ripple / aurora wave), washing over all
+/// UI elements without blanking them out — leaving cards, avatars, and
+/// text crystal clear while illuminating the new theme.
 class CircularThemeCover extends StatefulWidget {
   final Widget child;
 
@@ -18,7 +19,7 @@ class CircularThemeCover extends StatefulWidget {
     return context.findAncestorStateOfType<_CircularThemeCoverState>();
   }
 
-  /// Triggers the circular expanding cover animation from the given origin
+  /// Triggers the luminous radiant wave animation from the given origin
   static void trigger(
     BuildContext context, {
     Offset? origin,
@@ -43,18 +44,18 @@ class _CircularThemeCoverState extends State<CircularThemeCover>
 
   Offset _origin = Offset.zero;
   bool _isTransitioning = false;
-  Color _coverColor = Colors.black;
+  bool _isGoingDark = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 460),
+      duration: const Duration(milliseconds: 520),
     );
     _animation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeOutCubic,
     );
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -80,8 +81,7 @@ class _CircularThemeCoverState extends State<CircularThemeCover>
 
     final size = MediaQuery.sizeOf(context);
     final isDarkCurrently = ThemeController.isDark(context);
-    // The incoming color will be the target theme's background:
-    _coverColor = isDarkCurrently ? AppTheme.background : AppTheme.darkBackground;
+    _isGoingDark = !isDarkCurrently;
     _origin = origin ?? Offset(size.width - 44, 56);
 
     AppHaptics.medium();
@@ -106,10 +106,10 @@ class _CircularThemeCoverState extends State<CircularThemeCover>
                 animation: _animation,
                 builder: (context, _) {
                   return CustomPaint(
-                    painter: _CircularCoverPainter(
+                    painter: _RadiantWavePainter(
                       progress: _animation.value,
                       origin: _origin,
-                      coverColor: _coverColor,
+                      isGoingDark: _isGoingDark,
                     ),
                   );
                 },
@@ -121,54 +121,95 @@ class _CircularThemeCoverState extends State<CircularThemeCover>
   }
 }
 
-class _CircularCoverPainter extends CustomPainter {
+class _RadiantWavePainter extends CustomPainter {
   final double progress;
   final Offset origin;
-  final Color coverColor;
+  final bool isGoingDark;
 
-  _CircularCoverPainter({
+  _RadiantWavePainter({
     required this.progress,
     required this.origin,
-    required this.coverColor,
+    required this.isGoingDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (progress <= 0.0) return;
+    if (progress <= 0.0 || progress >= 1.0) return;
 
-    // Calculate maximum radius to guarantee covering all 4 screen corners
+    // Calculate maximum radius to guarantee reaching all corners
     final double maxDistX = math.max(origin.dx, size.width - origin.dx);
     final double maxDistY = math.max(origin.dy, size.height - origin.dy);
-    final double maxRadius = math.sqrt(maxDistX * maxDistX + maxDistY * maxDistY) * 1.06;
+    final double maxRadius =
+        math.sqrt(maxDistX * maxDistX + maxDistY * maxDistY) * 1.08;
 
     final double currentRadius = maxRadius * progress;
-    // Fade out smoothly at the very tail (from 0.82 to 1.0) so handoff is imperceptible
-    final double opacity = progress > 0.82 ? ((1.0 - progress) / 0.18).clamp(0.0, 1.0) : 1.0;
+    const double bandWidth = 160.0; // Width of the traveling luminous band
+    final double innerRadius = math.max(0.0, currentRadius - bandWidth);
 
-    final paint = Paint()
-      ..color = coverColor.withValues(alpha: opacity)
-      ..style = PaintingStyle.fill;
+    // Smooth entry and exit opacity so the ripple starts and lands smoothly
+    final double overallOpacity = progress < 0.12
+        ? (progress / 0.12)
+        : (progress > 0.82 ? ((1.0 - progress) / 0.18) : 1.0);
 
-    canvas.drawCircle(origin, currentRadius, paint);
+    // 1. Translucent Annular Radiant Shade
+    // Travels outward as a hollow luminous ring:
+    // UI elements INSIDE the ring and AHEAD of the ring are 100% visible!
+    if (currentRadius > 10) {
+      final Paint glowPaint = Paint()
+        ..shader = ui.Gradient.radial(
+          origin,
+          currentRadius,
+          [
+            Colors.transparent,
+            (isGoingDark ? const Color(0xFF18181B) : Colors.white).withValues(
+              alpha: (isGoingDark ? 0.32 : 0.40) * overallOpacity,
+            ),
+            (isGoingDark ? const Color(0xFF3F3F46) : const Color(0xFFFFFFFF))
+                .withValues(
+              alpha: (isGoingDark ? 0.45 : 0.55) * overallOpacity,
+            ),
+            Colors.transparent,
+          ],
+          [
+            math.max(0.0, innerRadius / currentRadius).clamp(0.0, 0.98),
+            ((innerRadius + bandWidth * 0.55) / currentRadius).clamp(0.0, 0.98),
+            0.98,
+            1.0,
+          ],
+        );
 
-    // Subtle edge highlight ring for a tactile liquid sweep feel
-    if (progress < 0.92 && opacity > 0.2) {
-      final ringPaint = Paint()
-        ..color = (coverColor == AppTheme.darkBackground
-                ? Colors.white
-                : Colors.black)
-            .withValues(alpha: (0.10 * (1.0 - progress)).clamp(0.0, 0.12))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-
-      canvas.drawCircle(origin, currentRadius, ringPaint);
+      canvas.drawCircle(origin, currentRadius, glowPaint);
     }
+
+    // 2. Soft Radiant Aura ahead of the wave crest
+    // Creates a glowing lens flare / neon halo effect passing over the UI
+    final Paint auraPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0)
+      ..color = (isGoingDark ? const Color(0xFFA1A1AA) : Colors.white).withValues(
+        alpha: (isGoingDark ? 0.22 : 0.42) * overallOpacity,
+      );
+
+    canvas.drawCircle(origin, currentRadius, auraPaint);
+
+    // 3. Crisp Luminous Shockwave Crest Line
+    // A high-contrast traveling wavefront ring that cleanly outlines the wave
+    // as it sweeps across the avatars and cards, proving "that it is coming"
+    final Paint crestPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..color = (isGoingDark ? Colors.white : const Color(0xFF09090B)).withValues(
+        alpha: (isGoingDark ? 0.48 : 0.32) * overallOpacity,
+      );
+
+    canvas.drawCircle(origin, currentRadius, crestPaint);
   }
 
   @override
-  bool shouldRepaint(covariant _CircularCoverPainter oldDelegate) {
+  bool shouldRepaint(covariant _RadiantWavePainter oldDelegate) {
     return oldDelegate.progress != progress ||
         oldDelegate.origin != origin ||
-        oldDelegate.coverColor != coverColor;
+        oldDelegate.isGoingDark != isGoingDark;
   }
 }
