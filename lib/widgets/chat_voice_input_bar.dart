@@ -525,7 +525,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
         children: [
           if (widget.replyMessage != null) _buildReplyBanner(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -533,24 +533,27 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                 Expanded(
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    constraints: const BoxConstraints(minHeight: 48),
+                    curve: Curves.easeOutCubic,
+                    constraints: const BoxConstraints(minHeight: 44),
                     decoration: BoxDecoration(
                       color: _isRecording
                           ? (context.isDark
-                              ? const Color(0xFF1E1E1E)
-                              : const Color(0xFFF4F4F5))
-                          : context.surfaceColor,
-                      borderRadius: BorderRadius.circular(24),
+                              ? const Color(0xFF1C1C1E)
+                              : const Color(0xFFF2F2F7))
+                          : (context.isDark
+                              ? const Color(0xFF1C1C1E)
+                              : const Color(0xFFF2F2F7)),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(
                         color: _isRecording
                             ? (_cancelThresholdCrossed
                                 ? AppTheme.danger
                                 : context.borderColor)
-                            : context.borderColor,
-                        width: 0.8,
+                            : (context.isDark
+                                ? const Color(0xFF2C2C30)
+                                : const Color(0xFFE5E5EA)),
+                        width: 0.7,
                       ),
-                      boxShadow: context.softShadow,
                     ),
                     child: _isRecording
                         ? (_isRecordingLocked
@@ -559,7 +562,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                         : _buildTextInputRow(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
 
                 // ── Dynamic Action Button with Floating Lock ──
                 _buildActionButton(),
@@ -711,57 +714,58 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         // Telegram Sleek Attachment Button (Paperclip)
-        IconButton(
-          splashRadius: 20,
-          padding: const EdgeInsets.all(12),
-          constraints: const BoxConstraints(),
-          onPressed: () => _showTelegramAttachmentSheet(context),
-          icon: Transform.rotate(
-            angle: -math.pi / 4,
-            child: Icon(
-              Icons.attach_file_rounded,
-              color: context.textSecondaryColor,
-              size: 22,
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showTelegramAttachmentSheet(context),
+          child: SizedBox(
+            width: 38,
+            height: 44,
+            child: Center(
+              child: Transform.rotate(
+                angle: -math.pi / 4,
+                child: Icon(
+                  Icons.attach_file_rounded,
+                  color: context.textSecondaryColor,
+                  size: 21,
+                ),
+              ),
             ),
           ),
         ),
         // Clean Typography Text Field auto-expanding up to 5 lines
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: TextField(
-              controller: widget.textController,
-              onChanged: widget.onTextChanged,
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              minLines: 1,
-              maxLines: 5,
-              cursorColor: context.primaryColor,
-              style: TextStyle(
+          child: TextField(
+            controller: widget.textController,
+            onChanged: widget.onTextChanged,
+            keyboardType: TextInputType.multiline,
+            textCapitalization: TextCapitalization.sentences,
+            minLines: 1,
+            maxLines: 5,
+            cursorColor: context.primaryColor,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: context.textPrimaryColor,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Message',
+              hintStyle: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
-                color: context.textPrimaryColor,
+                color: context.textMutedColor,
               ),
-              decoration: InputDecoration(
-                hintText: 'Message',
-                hintStyle: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: context.textMutedColor,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 10,
-                ),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 12,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
       ],
     );
   }
@@ -772,8 +776,9 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
     final int seconds = _recordSeconds % 60;
     final String timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
           // Blinking pulsing red dot
@@ -1142,7 +1147,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
             // Floating Lock Capsule (Telegram style)
             if (_isRecording && !_isRecordingLocked)
               Positioned(
-                bottom: 58,
+                bottom: 52,
                 child: _buildFloatingLockCapsule(),
               ),
 
@@ -1164,11 +1169,11 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
         return Transform.translate(
           offset: Offset(0, _dragOffsetY.clamp(-26.0, 0.0) - floatOffset),
           child: Container(
-            width: 38,
-            height: 68,
+            width: 36,
+            height: 64,
             decoration: BoxDecoration(
               color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(19),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: isNearLock
                     ? (context.isDark ? Colors.white : Colors.black)
@@ -1182,14 +1187,14 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
               children: [
                 Icon(
                   isNearLock ? Icons.lock_rounded : Icons.lock_outline_rounded,
-                  size: 18,
+                  size: 16,
                   color: isNearLock
                       ? (context.isDark ? Colors.white : Colors.black)
                       : context.textPrimaryColor,
                 ),
                 Icon(
                   Icons.keyboard_arrow_up_rounded,
-                  size: 16,
+                  size: 15,
                   color: context.textMutedColor,
                 ),
               ],
@@ -1206,18 +1211,17 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
       return GestureDetector(
         onTap: _isSendingVoice ? null : _stopAndSendRecording,
         child: Container(
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: context.isDark ? Colors.white : Colors.black,
             shape: BoxShape.circle,
-            boxShadow: context.isDark ? null : AppTheme.buttonShadow,
           ),
           child: Center(
             child: _isSendingVoice
                 ? SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
@@ -1228,7 +1232,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                 : Icon(
                     Icons.arrow_upward_rounded,
                     color: context.isDark ? Colors.black : Colors.white,
-                    size: 24,
+                    size: 22,
                   ),
           ),
         ),
@@ -1278,14 +1282,13 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: _cancelThresholdCrossed
                 ? AppTheme.danger
                 : (context.isDark ? Colors.white : Colors.black),
             shape: BoxShape.circle,
-            boxShadow: context.isDark ? null : AppTheme.buttonShadow,
           ),
           child: Center(
             child: _cancelThresholdCrossed
@@ -1294,19 +1297,19 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                     child: const Icon(
                       Icons.delete_rounded,
                       color: Colors.white,
-                      size: 25,
+                      size: 22,
                     ),
                   )
                 : (_dragOffsetY < -30
                     ? Icon(
                         Icons.lock_rounded,
                         color: context.isDark ? Colors.black : Colors.white,
-                        size: 22,
+                        size: 20,
                       )
                     : Icon(
                         Icons.mic_rounded,
                         color: context.isDark ? Colors.black : Colors.white,
-                        size: 25,
+                        size: 22,
                       )),
           ),
         ),
@@ -1371,23 +1374,29 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
               }
             },
       child: Container(
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: context.isDark ? Colors.white : Colors.black,
           shape: BoxShape.circle,
-          boxShadow: context.isDark ? null : AppTheme.buttonShadow,
         ),
         child: Center(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            transitionBuilder: (child, anim) =>
-                ScaleTransition(scale: anim, child: child),
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (child, anim) => ScaleTransition(
+              scale: anim,
+              child: RotationTransition(
+                turns: anim.drive(
+                  Tween<double>(begin: 0.12, end: 0.0),
+                ),
+                child: child,
+              ),
+            ),
             child: _isSendingVoice
                 ? SizedBox(
                     key: const ValueKey('sending'),
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
@@ -1401,7 +1410,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                         : Icons.mic_rounded,
                     key: ValueKey(hasText ? 'send' : 'mic'),
                     color: context.isDark ? Colors.black : Colors.white,
-                    size: 24,
+                    size: hasText ? 22 : 23,
                   ),
           ),
         ),

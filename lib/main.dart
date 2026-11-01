@@ -3,6 +3,7 @@ import 'package:chatty/screens/splash_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
+import 'package:chatty/widgets/circular_theme_cover.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
@@ -45,6 +46,16 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeMode,
+          builder: (context, child) {
+            return CircularThemeCover(
+              child: AnimatedTheme(
+                data: Theme.of(context),
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOut,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
           home: const SplashScreen(),
         );
       },

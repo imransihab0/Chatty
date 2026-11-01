@@ -12,6 +12,7 @@ import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/media_viewer_screen.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
+import 'package:chatty/widgets/circular_theme_cover.dart';
 import 'package:chatty/widgets/new_chat_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1112,22 +1113,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   label: 'System',
                                   icon: Icons.phone_iphone_rounded,
                                   isSelected: currentMode == ThemeMode.system,
-                                  onTap: () =>
-                                      ThemeController.setTheme(ThemeMode.system),
+                                  onTap: () {
+                                    CircularThemeCover.trigger(
+                                      context,
+                                      onToggle: () =>
+                                          ThemeController.setTheme(ThemeMode.system),
+                                    );
+                                  },
                                 ),
                                 _buildThemeSegment(
                                   label: 'Light',
                                   icon: Icons.light_mode_rounded,
                                   isSelected: currentMode == ThemeMode.light,
-                                  onTap: () =>
-                                      ThemeController.setTheme(ThemeMode.light),
+                                  onTap: () {
+                                    CircularThemeCover.trigger(
+                                      context,
+                                      onToggle: () =>
+                                          ThemeController.setTheme(ThemeMode.light),
+                                    );
+                                  },
                                 ),
                                 _buildThemeSegment(
                                   label: 'Dark',
                                   icon: Icons.dark_mode_rounded,
                                   isSelected: currentMode == ThemeMode.dark,
-                                  onTap: () =>
-                                      ThemeController.setTheme(ThemeMode.dark),
+                                  onTap: () {
+                                    CircularThemeCover.trigger(
+                                      context,
+                                      onToggle: () =>
+                                          ThemeController.setTheme(ThemeMode.dark),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

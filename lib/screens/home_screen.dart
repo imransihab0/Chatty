@@ -11,6 +11,7 @@ import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:chatty/widgets/chat_user_card.dart';
+import 'package:chatty/widgets/circular_theme_cover.dart';
 import 'package:chatty/widgets/new_chat_sheet.dart';
 import 'package:chatty/widgets/shimmer_skeleton.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -287,28 +288,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ],
       ),
       actions: [
-        IconButton(
-          splashRadius: 22,
-          tooltip: context.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-          onPressed: () {
-            AppHaptics.medium();
-            ThemeController.toggleTheme();
+        Builder(
+          builder: (btnContext) {
+            return IconButton(
+              splashRadius: 22,
+              tooltip: context.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+              onPressed: () {
+                final renderBox = btnContext.findRenderObject() as RenderBox?;
+                final offset = renderBox?.localToGlobal(
+                  renderBox.size.center(Offset.zero),
+                );
+                CircularThemeCover.trigger(
+                  btnContext,
+                  origin: offset,
+                  onToggle: () {
+                    ThemeController.toggleTheme();
+                  },
+                );
+              },
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                transitionBuilder: (child, anim) => RotationTransition(
+                  turns: anim,
+                  child: ScaleTransition(scale: anim, child: child),
+                ),
+                child: Icon(
+                  context.isDark
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded,
+                  key: ValueKey(context.isDark),
+                  color: context.textPrimaryColor,
+                  size: 22,
+                ),
+              ),
+            );
           },
-          icon: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            transitionBuilder: (child, anim) => RotationTransition(
-              turns: anim,
-              child: ScaleTransition(scale: anim, child: child),
-            ),
-            child: Icon(
-              context.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              key: ValueKey(context.isDark),
-              color: context.textPrimaryColor,
-              size: 22,
-            ),
-          ),
         ),
         IconButton(
           splashRadius: 22,
