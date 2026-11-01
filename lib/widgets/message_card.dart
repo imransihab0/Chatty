@@ -1,4 +1,3 @@
-
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
@@ -12,18 +11,31 @@ import 'package:chatty/widgets/audio_waveform_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Modern Chat Message Card with Long-press Actions, Reactions, and Swipe-to-Reply
+/// ---------------------------------------------------------------------------
+/// TELEGRAM-GRADE CHAT MESSAGE CARD
+/// Features:
+/// - Consecutive message clustering (dynamic corner radii & snug gaps)
+/// - Single-line timestamp alignment optimization
+/// - Audio waveform player with duration countdown
+/// - High-resolution media viewer hero trigger
+/// - Telegram frosted-glass reaction tray & context menu
+/// - Haptic swipe-to-reply gesture
+/// ---------------------------------------------------------------------------
 class MessageCard extends StatefulWidget {
   const MessageCard({
     super.key,
     required this.message,
     this.highlightQuery,
     this.onSwipeReply,
+    this.isPrevSame = false,
+    this.isNextSame = false,
   });
 
   final Message message;
   final String? highlightQuery;
   final Function(Message)? onSwipeReply;
+  final bool isPrevSame;
+  final bool isNextSame;
 
   @override
   State<MessageCard> createState() => _MessageCardState();
@@ -34,6 +46,78 @@ class _MessageCardState extends State<MessageCard> {
     r'(https?:\/\/[^\s]+)',
     caseSensitive: false,
   );
+
+  BorderRadius _getIncomingBorderRadius() {
+    const double outerR = 18.0;
+    const double innerR = 6.0;
+    const double tailR = 4.0;
+
+    if (!widget.isPrevSame && !widget.isNextSame) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(outerR),
+        topRight: Radius.circular(outerR),
+        bottomRight: Radius.circular(outerR),
+        bottomLeft: Radius.circular(tailR),
+      );
+    } else if (!widget.isPrevSame && widget.isNextSame) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(outerR),
+        topRight: Radius.circular(outerR),
+        bottomRight: Radius.circular(outerR),
+        bottomLeft: Radius.circular(innerR),
+      );
+    } else if (widget.isPrevSame && widget.isNextSame) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(innerR),
+        topRight: Radius.circular(outerR),
+        bottomRight: Radius.circular(outerR),
+        bottomLeft: Radius.circular(innerR),
+      );
+    } else {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(innerR),
+        topRight: Radius.circular(outerR),
+        bottomRight: Radius.circular(outerR),
+        bottomLeft: Radius.circular(tailR),
+      );
+    }
+  }
+
+  BorderRadius _getOutgoingBorderRadius() {
+    const double outerR = 18.0;
+    const double innerR = 6.0;
+    const double tailR = 4.0;
+
+    if (!widget.isPrevSame && !widget.isNextSame) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(outerR),
+        topRight: Radius.circular(outerR),
+        bottomLeft: Radius.circular(outerR),
+        bottomRight: Radius.circular(tailR),
+      );
+    } else if (!widget.isPrevSame && widget.isNextSame) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(outerR),
+        topRight: Radius.circular(outerR),
+        bottomLeft: Radius.circular(outerR),
+        bottomRight: Radius.circular(innerR),
+      );
+    } else if (widget.isPrevSame && widget.isNextSame) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(outerR),
+        topRight: Radius.circular(innerR),
+        bottomLeft: Radius.circular(outerR),
+        bottomRight: Radius.circular(innerR),
+      );
+    } else {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(outerR),
+        topRight: Radius.circular(innerR),
+        bottomLeft: Radius.circular(outerR),
+        bottomRight: Radius.circular(tailR),
+      );
+    }
+  }
 
   Widget _buildLinkPreviewIfNeeded(String text, bool isMe) {
     final match = _urlRegex.firstMatch(text);
@@ -81,7 +165,7 @@ class _MessageCardState extends State<MessageCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 20, color: iconColor),
-            const SizedBox(width: 8),
+            AppSpacing.gapW8,
             Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +174,7 @@ class _MessageCardState extends State<MessageCard> {
                   Text(
                     host,
                     style: TextStyle(
-                      fontFamily: 'Lexend',
+                      fontFamily: AppTypography.fontFamily,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: isMe ? Colors.white : context.textPrimaryColor,
@@ -102,7 +186,7 @@ class _MessageCardState extends State<MessageCard> {
                   Text(
                     urlString,
                     style: TextStyle(
-                      fontFamily: 'Lexend',
+                      fontFamily: AppTypography.fontFamily,
                       fontSize: 10,
                       color: isMe
                           ? Colors.white.withValues(alpha: 0.75)
@@ -114,7 +198,7 @@ class _MessageCardState extends State<MessageCard> {
                 ],
               ),
             ),
-            const SizedBox(width: 6),
+            AppSpacing.gapW6,
             Icon(
               Icons.open_in_new_rounded,
               size: 13,
@@ -136,7 +220,7 @@ class _MessageCardState extends State<MessageCard> {
         title: Text(
           'Edit Message',
           style: TextStyle(
-            fontFamily: 'Lexend',
+            fontFamily: AppTypography.fontFamily,
             fontWeight: FontWeight.w700,
             fontSize: 18,
             color: context.textPrimaryColor,
@@ -153,14 +237,14 @@ class _MessageCardState extends State<MessageCard> {
               autofocus: true,
               onChanged: (val) => updatedMsg = val,
               style: TextStyle(
-                fontFamily: 'Lexend',
+                fontFamily: AppTypography.fontFamily,
                 fontSize: 14,
                 color: context.textPrimaryColor,
               ),
               decoration: InputDecoration(
                 hintText: 'Enter updated message...',
                 hintStyle: TextStyle(
-                  fontFamily: 'Lexend',
+                  fontFamily: AppTypography.fontFamily,
                   fontSize: 13,
                   color: context.textMutedColor,
                 ),
@@ -170,7 +254,8 @@ class _MessageCardState extends State<MessageCard> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: context.textPrimaryColor, width: 1.5),
+                  borderSide:
+                      BorderSide(color: context.textPrimaryColor, width: 1.5),
                 ),
               ),
             ),
@@ -178,12 +263,16 @@ class _MessageCardState extends State<MessageCard> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              AppHaptics.light();
+              Navigator.pop(context);
+            },
             child: Text(
               'Cancel',
               style: TextStyle(
-                fontFamily: 'Lexend',
+                fontFamily: AppTypography.fontFamily,
                 color: context.textSecondaryColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -207,8 +296,9 @@ class _MessageCardState extends State<MessageCard> {
               }
             },
             child: const Text('Save',
-                style:
-                    TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    fontFamily: AppTypography.fontFamily,
+                    fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -235,14 +325,14 @@ class _MessageCardState extends State<MessageCard> {
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: context.surfaceColor.withValues(
-                            alpha: context.isDark ? 0.85 : 0.92),
+                        color: context.surfaceColor
+                            .withValues(alpha: context.isDark ? 0.85 : 0.92),
                         borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                            color: context.borderColor, width: 0.8),
+                        border:
+                            Border.all(color: context.borderColor, width: 0.8),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(
@@ -311,7 +401,7 @@ class _MessageCardState extends State<MessageCard> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                AppSpacing.gapH10,
 
                 // Clean Contextual Actions Card
                 Container(
@@ -336,7 +426,7 @@ class _MessageCardState extends State<MessageCard> {
                         title: Text(
                           'Reply',
                           style: TextStyle(
-                            fontFamily: 'Lexend',
+                            fontFamily: AppTypography.fontFamily,
                             color: context.textPrimaryColor,
                             fontWeight: FontWeight.w500,
                           ),
@@ -350,14 +440,17 @@ class _MessageCardState extends State<MessageCard> {
                         },
                       ),
                       if (widget.message.type == Type.text) ...[
-                        Divider(height: 1, indent: 54, color: context.borderColor),
+                        Divider(
+                            height: 1,
+                            indent: 54,
+                            color: context.borderColor),
                         ListTile(
                           leading: Icon(Icons.copy_rounded,
                               color: context.textPrimaryColor),
                           title: Text(
                             'Copy Text',
                             style: TextStyle(
-                              fontFamily: 'Lexend',
+                              fontFamily: AppTypography.fontFamily,
                               color: context.textPrimaryColor,
                               fontWeight: FontWeight.w500,
                             ),
@@ -373,14 +466,17 @@ class _MessageCardState extends State<MessageCard> {
                         ),
                       ],
                       if (isMe && widget.message.type == Type.text) ...[
-                        Divider(height: 1, indent: 54, color: context.borderColor),
+                        Divider(
+                            height: 1,
+                            indent: 54,
+                            color: context.borderColor),
                         ListTile(
                           leading: Icon(Icons.edit_rounded,
                               color: context.textPrimaryColor),
                           title: Text(
                             'Edit Message',
                             style: TextStyle(
-                              fontFamily: 'Lexend',
+                              fontFamily: AppTypography.fontFamily,
                               color: context.textPrimaryColor,
                               fontWeight: FontWeight.w500,
                             ),
@@ -392,14 +488,17 @@ class _MessageCardState extends State<MessageCard> {
                         ),
                       ],
                       if (isMe) ...[
-                        Divider(height: 1, indent: 54, color: context.borderColor),
+                        Divider(
+                            height: 1,
+                            indent: 54,
+                            color: context.borderColor),
                         ListTile(
                           leading: const Icon(Icons.delete_outline_rounded,
                               color: AppTheme.danger),
                           title: const Text(
                             'Delete Message',
                             style: TextStyle(
-                              fontFamily: 'Lexend',
+                              fontFamily: AppTypography.fontFamily,
                               color: AppTheme.danger,
                               fontWeight: FontWeight.w500,
                             ),
@@ -434,8 +533,8 @@ class _MessageCardState extends State<MessageCard> {
       padding: EdgeInsets.only(
         left: isMe ? 14 : 20,
         right: 14,
-        top: 4,
-        bottom: 4,
+        top: widget.isNextSame ? 1.5 : 4.0,
+        bottom: widget.isNextSame ? 1.5 : 4.0,
       ),
       child: Dismissible(
         key: Key('msg_${widget.message.sent}'),
@@ -506,7 +605,7 @@ class _MessageCardState extends State<MessageCard> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Lexend',
+              fontFamily: AppTypography.fontFamily,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: isMe
@@ -520,7 +619,7 @@ class _MessageCardState extends State<MessageCard> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Lexend',
+              fontFamily: AppTypography.fontFamily,
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: isMe
@@ -622,18 +721,16 @@ class _MessageCardState extends State<MessageCard> {
     final hasReply = widget.message.replyMsg.isNotEmpty;
 
     final TextStyle textStyle = TextStyle(
-      fontFamily: 'Lexend',
+      fontFamily: AppTypography.fontFamily,
       fontSize: 15,
       height: 1.35,
       color: isMe
-          ? Colors.white
-          : (context.isDark
-              ? const Color(0xFFF4F4F5)
-              : const Color(0xFF09090B)),
+          ? context.outgoingBubbleTextColor
+          : context.incomingBubbleTextColor,
     );
 
     final TextStyle timeStyle = TextStyle(
-      fontFamily: 'Lexend',
+      fontFamily: AppTypography.fontFamily,
       fontSize: 10,
       fontWeight: FontWeight.w500,
       color: isMe
@@ -644,10 +741,8 @@ class _MessageCardState extends State<MessageCard> {
     );
 
     final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.76;
-    // Account for horizontal bubble padding (13 * 2 = 26)
     final maxTextWidth = maxBubbleWidth - 26;
 
-    // Check if the text is a single line and can fit on the same line as the timestamp
     bool fitsOnSingleLine = false;
     if (!hasLink && !hasReply && !text.contains('\n')) {
       final textPainter = TextPainter(
@@ -656,7 +751,6 @@ class _MessageCardState extends State<MessageCard> {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      // Timestamp row width: ~68px for me (time + checkmarks), ~48px for other
       final timestampWidth = isMe ? 68.0 : 48.0;
       const spacing = 8.0;
 
@@ -683,7 +777,7 @@ class _MessageCardState extends State<MessageCard> {
                   isMe ? Colors.white : context.textPrimaryColor,
             ),
           ),
-          const SizedBox(width: 8),
+          AppSpacing.gapW8,
           Padding(
             padding: const EdgeInsets.only(bottom: 1),
             child: _buildTimestampRow(
@@ -697,7 +791,6 @@ class _MessageCardState extends State<MessageCard> {
       );
     }
 
-    // Multi-line layout
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -758,9 +851,7 @@ class _MessageCardState extends State<MessageCard> {
                 placeholder: (context, url) => Container(
                   height: 200,
                   width: double.infinity,
-                  color: isMe
-                      ? Colors.white24
-                      : context.surfaceMutedColor,
+                  color: isMe ? Colors.white24 : context.surfaceMutedColor,
                   child: Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
@@ -773,9 +864,7 @@ class _MessageCardState extends State<MessageCard> {
                 errorWidget: (context, url, error) => Container(
                   height: 120,
                   width: double.infinity,
-                  color: isMe
-                      ? Colors.white24
-                      : context.surfaceMutedColor,
+                  color: isMe ? Colors.white24 : context.surfaceMutedColor,
                   child: Icon(
                     Icons.broken_image,
                     size: 40,
@@ -799,7 +888,7 @@ class _MessageCardState extends State<MessageCard> {
                       Text(
                         sentTime,
                         style: const TextStyle(
-                          fontFamily: 'Lexend',
+                          fontFamily: AppTypography.fontFamily,
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
@@ -834,6 +923,8 @@ class _MessageCardState extends State<MessageCard> {
       APIs.updateMessageReadStatus(widget.message);
     }
 
+    final borderColor = context.incomingBubbleBorderColor;
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -849,20 +940,10 @@ class _MessageCardState extends State<MessageCard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: context.isDark
-                      ? const Color(0xFF1E1E22)
-                      : const Color(0xFFE9E9EB),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                    bottomRight: Radius.circular(18),
-                    bottomLeft: Radius.circular(4),
-                  ),
-                  border: context.isDark
-                      ? Border.all(
-                          color: const Color(0xFF2E2E32),
-                          width: 0.6,
-                        )
+                  color: context.incomingBubbleColor,
+                  borderRadius: _getIncomingBorderRadius(),
+                  border: borderColor != null
+                      ? Border.all(color: borderColor, width: 0.6)
                       : null,
                 ),
                 child: Padding(
@@ -935,6 +1016,8 @@ class _MessageCardState extends State<MessageCard> {
 
   // Sent by me (Right aligned)
   Widget _myMessage() {
+    final borderColor = context.outgoingBubbleBorderColor;
+
     return Align(
       alignment: Alignment.centerRight,
       child: Padding(
@@ -950,20 +1033,10 @@ class _MessageCardState extends State<MessageCard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: context.isDark
-                      ? const Color(0xFF2E2E32)
-                      : const Color(0xFF18181B),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                    bottomLeft: Radius.circular(18),
-                    bottomRight: Radius.circular(4),
-                  ),
-                  border: context.isDark
-                      ? Border.all(
-                          color: const Color(0xFF3F3F46),
-                          width: 0.6,
-                        )
+                  color: context.outgoingBubbleColor,
+                  borderRadius: _getOutgoingBorderRadius(),
+                  border: borderColor != null
+                      ? Border.all(color: borderColor, width: 0.6)
                       : null,
                 ),
                 child: Padding(
@@ -1034,4 +1107,3 @@ class _MessageCardState extends State<MessageCard> {
     );
   }
 }
-

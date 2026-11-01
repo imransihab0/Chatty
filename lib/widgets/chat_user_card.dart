@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
@@ -9,17 +8,21 @@ import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/profile_screen.dart';
 import 'package:chatty/services/chat_settings_controller.dart';
+import 'package:chatty/widgets/app_components.dart';
 import 'package:chatty/widgets/typing_wave_dots.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Telegram-Grade Chat Conversation Card
+/// ---------------------------------------------------------------------------
+/// TELEGRAM-GRADE CHAT CONVERSATION TILE
 /// Features:
-/// - 50pt rounded avatar with knockout online dot and subtle gradient fallback
-/// - Outgoing message delivery checkmarks (single check sent, double check read)
-/// - Media snippet previews (voice note with formatted duration, photo icon)
-/// - Pinned conversation badge and unread count pill
-/// - Telegram-style swipe actions (Swipe right to Pin/Unpin, Swipe left for Actions)
+/// - 52pt rounded avatar with knockout online dot and fallback initials
+/// - Pinned conversation tint and pin icon badge
+/// - Outgoing delivery checkmarks (single sent, double read)
+/// - Media snippet icons (Photo, Voice Note with duration)
+/// - Telegram swipe actions (Swipe right to Pin/Unpin, Swipe left for Options)
+/// - Smooth haptic feedback and context sheet
+/// ---------------------------------------------------------------------------
 class ChatUserCard extends StatefulWidget {
   final ChatUser user;
 
@@ -33,6 +36,7 @@ class _ChatUserCardState extends State<ChatUserCard>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
   Message? _message;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _userInfoStream;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _lastMessageStream;
@@ -58,34 +62,6 @@ class _ChatUserCardState extends State<ChatUserCard>
     }
   }
 
-  Widget _buildAvatarFallback(ChatUser user) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: context.isDark
-              ? const [Color(0xFF2C2C2E), Color(0xFF1C1C1E)]
-              : const [Color(0xFFE4E4E7), Color(0xFFF4F4F5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w700,
-            color: context.textPrimaryColor,
-            fontSize: 20,
-          ),
-        ),
-      ),
-    );
-  }
-
   String _formatVoiceDuration(int durationMs) {
     if (durationMs <= 0) return 'Voice note';
     final seconds = (durationMs / 1000).round();
@@ -105,9 +81,7 @@ class _ChatUserCardState extends State<ChatUserCard>
         size: 15,
         color: isRead
             ? AppTheme.success
-            : (context.isDark
-                ? const Color(0xFFD4D4D8)
-                : const Color(0xFF52525B)),
+            : (context.isDark ? const Color(0xFFD4D4D8) : const Color(0xFF52525B)),
       ),
     );
   }
@@ -140,7 +114,7 @@ class _ChatUserCardState extends State<ChatUserCard>
                     title: Text(
                       isPinned ? 'Unpin from Top' : 'Pin to Top',
                       style: TextStyle(
-                        fontFamily: 'Lexend',
+                        fontFamily: AppTypography.fontFamily,
                         color: context.textPrimaryColor,
                         fontWeight: FontWeight.w600,
                       ),
@@ -162,7 +136,7 @@ class _ChatUserCardState extends State<ChatUserCard>
                     title: Text(
                       'View Profile',
                       style: TextStyle(
-                        fontFamily: 'Lexend',
+                        fontFamily: AppTypography.fontFamily,
                         color: context.textPrimaryColor,
                         fontWeight: FontWeight.w600,
                       ),
@@ -184,7 +158,7 @@ class _ChatUserCardState extends State<ChatUserCard>
                     title: Text(
                       'Mute Notifications',
                       style: TextStyle(
-                        fontFamily: 'Lexend',
+                        fontFamily: AppTypography.fontFamily,
                         color: context.textPrimaryColor,
                         fontWeight: FontWeight.w600,
                       ),
@@ -214,8 +188,7 @@ class _ChatUserCardState extends State<ChatUserCard>
     final swipeBgColor = context.isDark
         ? const Color(0xFF262626)
         : const Color(0xFFE4E4E7);
-    final swipeFgColor =
-        context.isDark ? Colors.white : Colors.black87;
+    final swipeFgColor = context.isDark ? Colors.white : Colors.black87;
 
     return Dismissible(
       key: Key('chat_card_${widget.user.id}'),
@@ -251,11 +224,11 @@ class _ChatUserCardState extends State<ChatUserCard>
               color: swipeFgColor,
               size: 22,
             ),
-            const SizedBox(width: 8),
+            AppSpacing.gapW8,
             Text(
               isPinned ? 'Unpin' : 'Pin to Top',
               style: TextStyle(
-                fontFamily: 'Lexend',
+                fontFamily: AppTypography.fontFamily,
                 color: swipeFgColor,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
@@ -274,13 +247,13 @@ class _ChatUserCardState extends State<ChatUserCard>
             Text(
               'Options',
               style: TextStyle(
-                fontFamily: 'Lexend',
+                fontFamily: AppTypography.fontFamily,
                 color: swipeFgColor,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
             ),
-            const SizedBox(width: 8),
+            AppSpacing.gapW8,
             Icon(
               Icons.more_horiz_rounded,
               color: swipeFgColor,
@@ -294,9 +267,7 @@ class _ChatUserCardState extends State<ChatUserCard>
         children: [
           Material(
             color: isPinned
-                ? (context.isDark
-                    ? const Color(0xFF1E1E22)
-                    : const Color(0xFFF4F4F7))
+                ? (context.isDark ? const Color(0xFF1E1E22) : const Color(0xFFF4F4F7))
                 : Colors.transparent,
             child: InkWell(
               onLongPress: () {
@@ -304,242 +275,206 @@ class _ChatUserCardState extends State<ChatUserCard>
                 _showChatOptions(isPinned, widget.user);
               },
               onTap: () {
-              Navigator.push(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => ChatScreen(user: widget.user)));
-            },
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _userInfoStream,
-              builder: (context, userSnapshot) {
-                final userData = userSnapshot.data?.docs;
-                final userList = userData
-                        ?.map((e) => ChatUser.fromJson(e.data()))
-                        .toList() ??
-                    [];
-                final currentUser =
-                    userList.isNotEmpty ? userList[0] : widget.user;
+                    builder: (_) => ChatScreen(user: widget.user),
+                  ),
+                );
+              },
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _userInfoStream,
+                builder: (context, userSnapshot) {
+                  final userData = userSnapshot.data?.docs;
+                  final userList = userData
+                          ?.map((e) => ChatUser.fromJson(e.data()))
+                          .toList() ??
+                      [];
+                  final currentUser =
+                      userList.isNotEmpty ? userList[0] : widget.user;
 
-                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _lastMessageStream,
-                  builder: (context, msgSnapshot) {
-                    final data = msgSnapshot.data?.docs;
-                    final list = data
-                            ?.map((e) => Message.fromJson(e.data()))
-                            .toList() ??
-                        [];
-                    if (list.isNotEmpty) {
-                      _message = list[0];
-                    }
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _lastMessageStream,
+                    builder: (context, msgSnapshot) {
+                      final data = msgSnapshot.data?.docs;
+                      final list = data
+                              ?.map((e) => Message.fromJson(e.data()))
+                              .toList() ??
+                          [];
+                      if (list.isNotEmpty) {
+                        _message = list[0];
+                      }
 
-                    final bool isUnread = _message != null &&
-                        _message!.read.isEmpty &&
-                        _message!.fromId != APIs.myUid;
+                      final bool isUnread = _message != null &&
+                          _message!.read.isEmpty &&
+                          _message!.fromId != APIs.myUid;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      child: Row(
-                        children: [
-                          // 52pt Lean Avatar with Knockout Online Dot
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(26),
-                                child: CachedNetworkImage(
-                                  width: 52,
-                                  height: 52,
-                                  fit: BoxFit.cover,
-                                  imageUrl: currentUser.image,
-                                  memCacheWidth: 104,
-                                  memCacheHeight: 104,
-                                  fadeInDuration:
-                                      const Duration(milliseconds: 100),
-                                  fadeOutDuration:
-                                      const Duration(milliseconds: 50),
-                                  placeholder: (context, url) =>
-                                      _buildAvatarFallback(currentUser),
-                                  errorWidget: (context, url, error) =>
-                                      _buildAvatarFallback(currentUser),
-                                ),
-                              ),
-                              // Knockout online indicator badge
-                              if (currentUser.isOnline)
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 13,
-                                    height: 13,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.success,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isPinned
-                                            ? (context.isDark
-                                                ? const Color(0xFF1E1E22)
-                                                : const Color(0xFFF4F4F7))
-                                            : context.backgroundColor,
-                                        width: 2.2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(width: 14),
-
-                          // User Name & Last Message Subtitle
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  currentUser.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 16,
-                                    fontWeight: isUnread
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: context.textPrimaryColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                StreamBuilder<
-                                    DocumentSnapshot<Map<String, dynamic>>>(
-                                  stream: _chatMetaStream,
-                                  builder: (context, metaSnap) {
-                                    final metaData = metaSnap.data?.data();
-                                    final bool isTypingRaw = metaData?[
-                                            'typing_${widget.user.id}'] ==
-                                        true;
-                                    final int lastTypingTime = metaData?[
-                                                'typing_time_${widget.user.id}']
-                                            is int
-                                        ? metaData![
-                                                'typing_time_${widget.user.id}']
-                                            as int
-                                        : (metaData?['typing_time'] is int
-                                            ? metaData!['typing_time'] as int
-                                            : 0);
-                                    final int now =
-                                        DateTime.now().millisecondsSinceEpoch;
-                                    final bool isTyping = isTypingRaw &&
-                                        (lastTypingTime == 0 ||
-                                            (now - lastTypingTime < 2400));
-
-                                    if (isTyping) {
-                                      return const TypingWaveDots(
-                                        dotSize: 4.0,
-                                        showLabel: true,
-                                        label: 'typing',
-                                      );
-                                    }
-
-                                    return Row(
-                                      children: [
-                                        if (_message != null)
-                                          _buildMessageStatusIcon(_message!),
-                                        Expanded(
-                                          child: Text(
-                                            _message != null
-                                                ? _message!.type == Type.image
-                                                    ? '📷 Photo'
-                                                    : _message!.type ==
-                                                            Type.audio
-                                                        ? '🎙️ ${_formatVoiceDuration(_message!.durationMs)}'
-                                                        : _message!.msg
-                                                : currentUser.about,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontFamily: 'Lexend',
-                                              fontSize: 13.5,
-                                              fontWeight: isUnread
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
-                                              color: isUnread
-                                                  ? context.textPrimaryColor
-                                                  : context.textSecondaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ],
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            // 52pt Avatar with Knockout Online Dot
+                            AppAvatar(
+                              imageUrl: currentUser.image,
+                              name: currentUser.name,
+                              size: 52,
+                              isOnline: currentUser.isOnline,
                             ),
-                          ),
+                            AppSpacing.gapW14,
 
-                          // Timestamp & Trailing Indicators (Pin / Unread)
-                          if (_message != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 10),
+                            // User Name & Subtitle Snippet
+                            Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    MyDateUtil.getLastMessageTime(
-                                        context: context,
-                                        time: _message!.sent),
+                                    currentUser.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 11.5,
+                                      fontFamily: AppTypography.fontFamily,
+                                      fontSize: 16,
                                       fontWeight: isUnread
-                                          ? FontWeight.w600
-                                          : FontWeight.w400,
-                                      color: isUnread
-                                          ? (context.isDark
-                                              ? Colors.white
-                                              : Colors.black)
-                                          : context.textMutedColor,
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      color: context.textPrimaryColor,
                                     ),
                                   ),
-                                  const SizedBox(height: 5),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (isPinned) ...[
-                                        Icon(
-                                          Icons.push_pin_rounded,
-                                          size: 13,
-                                          color: context.textMutedColor,
-                                        ),
-                                        if (isUnread) const SizedBox(width: 5),
-                                      ],
-                                      if (isUnread)
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: BoxDecoration(
-                                            color: context.isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                            shape: BoxShape.circle,
+                                  const SizedBox(height: 3),
+                                  StreamBuilder<
+                                      DocumentSnapshot<Map<String, dynamic>>>(
+                                    stream: _chatMetaStream,
+                                    builder: (context, metaSnap) {
+                                      final metaData = metaSnap.data?.data();
+                                      final bool isTypingRaw = metaData?[
+                                              'typing_${widget.user.id}'] ==
+                                          true;
+                                      final int lastTypingTime = metaData?[
+                                                  'typing_time_${widget.user.id}']
+                                              is int
+                                          ? metaData![
+                                                  'typing_time_${widget.user.id}']
+                                              as int
+                                          : (metaData?['typing_time'] is int
+                                              ? metaData!['typing_time'] as int
+                                              : 0);
+                                      final int now =
+                                          DateTime.now().millisecondsSinceEpoch;
+                                      final bool isTyping = isTypingRaw &&
+                                          (lastTypingTime == 0 ||
+                                              (now - lastTypingTime < 2400));
+
+                                      if (isTyping) {
+                                        return const TypingWaveDots(
+                                          dotSize: 4.0,
+                                          showLabel: true,
+                                          label: 'typing',
+                                        );
+                                      }
+
+                                      return Row(
+                                        children: [
+                                          if (_message != null)
+                                            _buildMessageStatusIcon(_message!),
+                                          Expanded(
+                                            child: Text(
+                                              _message != null
+                                                  ? _message!.type == Type.image
+                                                      ? '📷 Photo'
+                                                      : _message!.type ==
+                                                              Type.audio
+                                                          ? '🎙️ ${_formatVoiceDuration(_message!.durationMs)}'
+                                                          : _message!.msg
+                                                  : currentUser.about,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontFamily:
+                                                    AppTypography.fontFamily,
+                                                fontSize: 13.5,
+                                                fontWeight: isUnread
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                                color: isUnread
+                                                    ? context.textPrimaryColor
+                                                    : context
+                                                        .textSecondaryColor,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                    ],
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
                             ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+
+                            // Timestamp & Unread / Pin Indicators
+                            if (_message != null)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      MyDateUtil.getLastMessageTime(
+                                          context: context,
+                                          time: _message!.sent),
+                                      style: TextStyle(
+                                        fontFamily: AppTypography.fontFamily,
+                                        fontSize: 11.5,
+                                        fontWeight: isUnread
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: isUnread
+                                            ? (context.isDark
+                                                ? Colors.white
+                                                : Colors.black)
+                                            : context.textMutedColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isPinned) ...[
+                                          Icon(
+                                            Icons.push_pin_rounded,
+                                            size: 13,
+                                            color: context.textMutedColor,
+                                          ),
+                                          if (isUnread) AppSpacing.gapW4,
+                                        ],
+                                        if (isUnread)
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: context.isDark
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        // Subtle hairline divider indented 82pt after avatar
+          // Subtle hairline divider indented 82pt after avatar
           Divider(
             height: 0.8,
             thickness: 0.6,

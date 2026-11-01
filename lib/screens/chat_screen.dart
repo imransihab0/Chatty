@@ -12,6 +12,7 @@ import '../helper/dialogs.dart';
 import '../helper/my_date_util.dart';
 import '../models/chat_user.dart';
 import '../models/message.dart';
+import '../widgets/app_components.dart';
 import '../widgets/chat_voice_input_bar.dart';
 import '../widgets/message_card.dart';
 import '../widgets/shimmer_skeleton.dart';
@@ -682,6 +683,15 @@ class _ChatScreenState extends State<ChatScreen> {
                                       msg.sent,
                                       _list[index + 1].sent);
 
+                              // In reverse list: index + 1 is above (earlier), index - 1 is below (later)
+                              final bool isPrevSame = index + 1 < _list.length &&
+                                  _list[index + 1].fromId == msg.fromId &&
+                                  !MyDateUtil.isDifferentDay(msg.sent, _list[index + 1].sent);
+
+                              final bool isNextSame = index - 1 >= 0 &&
+                                  _list[index - 1].fromId == msg.fromId &&
+                                  !MyDateUtil.isDifferentDay(msg.sent, _list[index - 1].sent);
+
                               return Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -691,6 +701,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                     message: msg,
                                     highlightQuery:
                                         _isSearching ? _searchQuery : null,
+                                    isPrevSame: isPrevSame,
+                                    isNextSame: isNextSame,
                                     onSwipeReply: (m) {
                                       setState(() => _replyMessage = m);
                                     },
@@ -884,52 +896,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Row(
                     children: [
                       // Avatar with online dot
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: CachedNetworkImage(
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              imageUrl: currentUser.image,
-                              errorWidget: (context, url, error) =>
-                                  CircleAvatar(
-                                radius: 20,
-                                backgroundColor: context.primarySoftColor,
-                                child: Text(
-                                  currentUser.name.isNotEmpty
-                                      ? currentUser.name[0].toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontWeight: FontWeight.w700,
-                                    color: context.textPrimaryColor,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (currentUser.isOnline)
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                width: 11,
-                                height: 11,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.success,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: context.surfaceColor, width: 2),
-                                ),
-                              ),
-                            ),
-                        ],
+                      AppAvatar(
+                        imageUrl: currentUser.image,
+                        name: currentUser.name,
+                        size: 40,
+                        isOnline: currentUser.isOnline,
                       ),
-                      const SizedBox(width: 12),
+                      AppSpacing.gapW12,
 
                       // Name & Status
                       Expanded(
