@@ -307,9 +307,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
               },
               icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 320),
+                duration: const Duration(milliseconds: 450),
+                switchInCurve: Curves.easeOutBack,
+                switchOutCurve: Curves.easeInBack,
                 transitionBuilder: (child, anim) => RotationTransition(
-                  turns: anim,
+                  turns: anim.drive(Tween<double>(begin: 0.75, end: 1.0)),
                   child: ScaleTransition(scale: anim, child: child),
                 ),
                 child: Icon(

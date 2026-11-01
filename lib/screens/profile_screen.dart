@@ -1113,9 +1113,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   label: 'System',
                                   icon: Icons.phone_iphone_rounded,
                                   isSelected: currentMode == ThemeMode.system,
-                                  onTap: () {
+                                  onTap: (origin) {
                                     CircularThemeCover.trigger(
                                       context,
+                                      origin: origin,
                                       onToggle: () =>
                                           ThemeController.setTheme(ThemeMode.system),
                                     );
@@ -1125,9 +1126,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   label: 'Light',
                                   icon: Icons.light_mode_rounded,
                                   isSelected: currentMode == ThemeMode.light,
-                                  onTap: () {
+                                  onTap: (origin) {
                                     CircularThemeCover.trigger(
                                       context,
+                                      origin: origin,
                                       onToggle: () =>
                                           ThemeController.setTheme(ThemeMode.light),
                                     );
@@ -1137,9 +1139,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   label: 'Dark',
                                   icon: Icons.dark_mode_rounded,
                                   isSelected: currentMode == ThemeMode.dark,
-                                  onTap: () {
+                                  onTap: (origin) {
                                     CircularThemeCover.trigger(
                                       context,
+                                      origin: origin,
                                       onToggle: () =>
                                           ThemeController.setTheme(ThemeMode.dark),
                                     );
@@ -1275,57 +1278,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required IconData icon,
     required bool isSelected,
-    required VoidCallback onTap,
+    required Function(Offset offset) onTap,
   }) {
     return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          AppHaptics.selection();
-          onTap();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (context.isDark ? const Color(0xFF3F3F46) : Colors.white)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 14,
+      child: Builder(
+        builder: (segContext) {
+          return GestureDetector(
+            onTap: () {
+              AppHaptics.selection();
+              final box = segContext.findRenderObject() as RenderBox?;
+              final offset = box != null
+                  ? box.localToGlobal(box.size.center(Offset.zero))
+                  : Offset.zero;
+              onTap(offset);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
                 color: isSelected
-                    ? context.textPrimaryColor
-                    : context.textMutedColor,
+                    ? (context.isDark ? const Color(0xFF3F3F46) : Colors.white)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ]
+                    : null,
               ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? context.textPrimaryColor
-                      : context.textMutedColor,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 14,
+                    color: isSelected
+                        ? context.textPrimaryColor
+                        : context.textMutedColor,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected
+                          ? context.textPrimaryColor
+                          : context.textMutedColor,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

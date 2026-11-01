@@ -48,12 +48,7 @@ class MyApp extends StatelessWidget {
           themeMode: themeMode,
           builder: (context, child) {
             return CircularThemeCover(
-              child: AnimatedTheme(
-                data: Theme.of(context),
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeInOut,
-                child: child ?? const SizedBox.shrink(),
-              ),
+              child: child ?? const SizedBox.shrink(),
             );
           },
           home: const SplashScreen(),
