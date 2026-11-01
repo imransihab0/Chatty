@@ -3,7 +3,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
-import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
@@ -12,6 +11,7 @@ import 'package:chatty/services/chat_settings_controller.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
 import 'package:chatty/widgets/chat_user_card.dart';
+import 'package:chatty/widgets/new_chat_sheet.dart';
 import 'package:chatty/widgets/shimmer_skeleton.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -122,148 +122,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _lookupAndOpenUser(String targetEmail) async {
-    final trimmed = targetEmail.trim();
-    if (trimmed.isEmpty) return;
-    if (trimmed.toLowerCase() == APIs.user.email?.toLowerCase()) {
-      Dialogs.showSnackbar(context, 'You cannot chat with yourself!');
-      return;
-    }
-
-    final userSnapshot = await APIs.firestore
-        .collection('users')
-        .where('email', isEqualTo: trimmed)
-        .get();
-    if (!mounted) return;
-    if (userSnapshot.docs.isNotEmpty) {
-      final chatUser = ChatUser.fromJson(userSnapshot.docs.first.data());
-      Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ChatScreen(user: chatUser)));
-    } else {
-      Dialogs.showSnackbar(context, 'User not found!');
-    }
-  }
-
-  void _addChatUserDialog() {
-    String email = '';
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.surfaceColor,
-        contentPadding:
-            const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: context.borderColor, width: 0.8),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.person_add_rounded, color: context.textPrimaryColor, size: 26),
-            const SizedBox(width: 10),
-            Text(
-              'Add Friend',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: context.textPrimaryColor,
-              ),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter your friend\'s email to start a conversation:',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  color: context.textSecondaryColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                maxLines: 1,
-                autofocus: true,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.email],
-                onChanged: (value) => email = value.trim(),
-                onFieldSubmitted: (val) {
-                  Navigator.pop(context);
-                  _lookupAndOpenUser(val);
-                },
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: context.textPrimaryColor,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'name@example.com',
-                  hintStyle: TextStyle(
-                    fontFamily: 'Lexend',
-                    color: context.textMutedColor,
-                    fontSize: 14,
-                  ),
-                  prefixIcon: Icon(Icons.email_outlined,
-                      color: context.textSecondaryColor, size: 20),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  filled: true,
-                  fillColor: context.surfaceMutedColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                color: context.textSecondaryColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: context.isDark ? Colors.white : Colors.black,
-              foregroundColor: context.isDark ? Colors.black : Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              _lookupAndOpenUser(email);
-            },
-            child: const Text(
-              'Chat',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -278,26 +136,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Scaffold(
           backgroundColor: context.backgroundColor,
           appBar: _isSearching ? _searchAppBar() : _defaultAppBar(),
-          floatingActionButton: _isSearching
-              ? null
-              : FloatingActionButton.extended(
-                  onPressed: _addChatUserDialog,
-                  backgroundColor:
-                      context.isDark ? Colors.white : Colors.black,
-                  elevation: 4,
-                  icon: Icon(Icons.add_comment_rounded,
-                      color: context.isDark ? Colors.black : Colors.white,
-                      size: 20),
-                  label: Text(
-                    'New Chat',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: context.isDark ? Colors.black : Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _usersStream,
             builder: (context, snapshot) {
@@ -478,6 +316,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           onPressed: _startSearch,
           icon: Icon(
             Icons.search_rounded,
+            color: context.textPrimaryColor,
+            size: 22,
+          ),
+        ),
+        IconButton(
+          splashRadius: 22,
+          tooltip: 'New Chat',
+          onPressed: () => NewChatSheet.show(context),
+          icon: Icon(
+            Icons.person_add_outlined,
             color: context.textPrimaryColor,
             size: 22,
           ),
@@ -1008,7 +856,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       addRepaintBoundaries: true,
       padding: EdgeInsets.only(
         top: 4,
-        bottom: 96 + MediaQuery.paddingOf(context).bottom,
+        bottom: 24 + MediaQuery.paddingOf(context).bottom,
       ),
       physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics()),
@@ -1349,12 +1197,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap "New Chat" below to start a conversation with a friend!',
+              'Search by username or email to start a conversation with a friend!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 14,
                 color: context.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: () => NewChatSheet.show(context),
+              icon: const Icon(Icons.person_add_outlined, size: 18),
+              label: const Text(
+                'Start a Conversation',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.isDark ? Colors.white : Colors.black,
+                foregroundColor: context.isDark ? Colors.black : Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
               ),
             ),
           ],

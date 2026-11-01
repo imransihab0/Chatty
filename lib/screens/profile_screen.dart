@@ -11,6 +11,7 @@ import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/media_viewer_screen.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
+import 'package:chatty/widgets/new_chat_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -720,7 +721,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             // ─────────────────────────────────────────────────────────────
-            // Card 2: Appearance & Theme
+            // Card 2: People & Contacts (New Chat / Add Contact by Username or Email)
+            // ─────────────────────────────────────────────────────────────
+            _buildGroupCard(
+              context: context,
+              headerTitle: 'People & Contacts',
+              children: [
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: _buildIconBadge(
+                    context: context,
+                    icon: Icons.person_add_outlined,
+                    backgroundColor: context.badgeBackgroundColor,
+                    iconColor: context.textPrimaryColor,
+                  ),
+                  title: Text(
+                    'New Chat / Add Contact',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimaryColor,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Search by username (@handle) or email',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12.5,
+                      color: context.textMutedColor,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.chevronColor,
+                    size: 20,
+                  ),
+                  onTap: () => NewChatSheet.show(context),
+                ),
+              ],
+            ),
+
+            // ─────────────────────────────────────────────────────────────
+            // Card 3: Appearance & Theme
             // ─────────────────────────────────────────────────────────────
             _buildGroupCard(
               context: context,

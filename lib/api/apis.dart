@@ -370,10 +370,10 @@ class APIs{
     }
   }
 
-  // search users across entire Firestore database
+  // search users across entire Firestore database by username, handle, email, or name
   static Future<List<ChatUser>> searchUsers(String query) async {
     try {
-      final cleanQuery = query.trim().toLowerCase();
+      final cleanQuery = query.trim().toLowerCase().replaceAll('@', '');
       if (cleanQuery.isEmpty) return [];
 
       final snapshot = await firestore
@@ -383,10 +383,18 @@ class APIs{
 
       return snapshot.docs
           .map((e) => ChatUser.fromJson(e.data()))
-          .where((u) =>
-              u.name.toLowerCase().contains(cleanQuery) ||
-              u.email.toLowerCase().contains(cleanQuery) ||
-              u.about.toLowerCase().contains(cleanQuery))
+          .where((u) {
+            final name = u.name.toLowerCase();
+            final email = u.email.toLowerCase();
+            final emailHandle =
+                email.contains('@') ? email.split('@').first : email;
+            final nameHandle = name.replaceAll(' ', '');
+            return name.contains(cleanQuery) ||
+                email.contains(cleanQuery) ||
+                emailHandle.contains(cleanQuery) ||
+                nameHandle.contains(cleanQuery) ||
+                u.about.toLowerCase().contains(cleanQuery);
+          })
           .toList();
     } catch (e) {
       log('Error searchUsers: $e');
