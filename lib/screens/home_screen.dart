@@ -163,10 +163,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     return ValueListenableBuilder<Set<String>>(
                       valueListenable: ChatSettingsController.pinnedNotifier,
                       builder: (context, pinnedSet, _) {
-                        return ValueListenableBuilder<Map<String, int>>(
-                          valueListenable:
-                              ConversationController.lastMessageTimesNotifier,
-                          builder: (context, messageTimes, _) {
+                        return ValueListenableBuilder<Set<String>>(
+                          valueListenable: ConversationController.manualUnreadNotifier,
+                          builder: (context, manualUnreadSet, _) {
+                            return ValueListenableBuilder<Map<String, int>>(
+                              valueListenable:
+                                  ConversationController.lastMessageTimesNotifier,
+                              builder: (context, messageTimes, _) {
                             // Filter ONLY connected users:
                             // Users who have exchanged at least 1 message or are pinned.
                             // Accounts that never messaged are treated as NOT connected.
@@ -267,7 +270,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     );
                   },
                 );
-              }
+              },
+            );
+          }
 
               // Shimmer skeleton placeholders during initial cold load
               return const HomeConversationSkeletonList();

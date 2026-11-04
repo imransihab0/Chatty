@@ -518,6 +518,56 @@ class APIs{
     }
   }
 
+  // delete entire conversation with a user
+  static Future<bool> deleteConversation(ChatUser chatUser) async {
+    try {
+      final convoId = getConversationID(chatUser.id);
+      final messages = await firestore
+          .collection('chats/$convoId/messages/')
+          .get();
+      for (final doc in messages.docs) {
+        final data = doc.data();
+        final type = data['type']?.toString();
+        final msg = data['msg']?.toString() ?? '';
+        if (type == Type.image.name || type == Type.audio.name) {
+          if (msg.contains('r2.dev') ||
+              msg.contains('cloudflarestorage.com') ||
+              (R2StorageService.isConfigured &&
+                  msg.contains(R2StorageService.publicDomain))) {
+            await R2StorageService.deleteObject(msg);
+          } else {
+            await storage.refFromURL(msg).delete().catchError((_) {});
+          }
+        }
+        await doc.reference.delete();
+      }
+      ConversationController.setLastMessageTime(chatUser.id, 0);
+      return true;
+    } catch (e) {
+      log('Error deleteConversation: $e');
+      return false;
+    }
+  }
+
+  // mark all incoming unread messages in a conversation as read
+  static Future<void> markConversationAsRead(ChatUser chatUser) async {
+    try {
+      final convoId = getConversationID(chatUser.id);
+      final unreadDocs = await firestore
+          .collection('chats/$convoId/messages/')
+          .where('fromId', isEqualTo: chatUser.id)
+          .where('read', isEqualTo: '')
+          .get();
+      final now = DateTime.now().millisecondsSinceEpoch.toString();
+      for (final doc in unreadDocs.docs) {
+        await doc.reference.update({'read': now});
+      }
+      ConversationController.markRead(chatUser.id);
+    } catch (e) {
+      log('Error markConversationAsRead: $e');
+    }
+  }
+
   // Search users across entire Firestore database strictly by username (@handle) or email
   static Future<List<ChatUser>> searchUsers(String query) async {
     try {

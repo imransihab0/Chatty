@@ -41,11 +41,107 @@ class MessageCard extends StatefulWidget {
   State<MessageCard> createState() => _MessageCardState();
 }
 
-class _MessageCardState extends State<MessageCard> {
+class _MessageCardState extends State<MessageCard>
+    with SingleTickerProviderStateMixin {
   static final RegExp _urlRegex = RegExp(
     r'(https?:\/\/[^\s]+)',
     caseSensitive: false,
   );
+
+  final GlobalKey _bubbleKey = GlobalKey();
+  double _pressScale = 1.0;
+
+  late final AnimationController _heartAnimController;
+  late final Animation<double> _heartScale;
+  late final Animation<double> _heartOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _heartAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _heartScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.35)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.35, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 30,
+      ),
+    ]).animate(_heartAnimController);
+
+    _heartOpacity = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.0),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0),
+        weight: 30,
+      ),
+    ]).animate(_heartAnimController);
+  }
+
+  @override
+  void dispose() {
+    _heartAnimController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildHeartBurstOverlay() {
+    return AnimatedBuilder(
+      animation: _heartAnimController,
+      builder: (context, child) {
+        if (_heartAnimController.value == 0.0) {
+          return const SizedBox.shrink();
+        }
+        return Positioned.fill(
+          child: Center(
+            child: Opacity(
+              opacity: _heartOpacity.value,
+              child: Transform.scale(
+                scale: _heartScale.value,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF2D55).withValues(alpha: 0.6),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    color: Color(0xFFFF2D55),
+                    size: 38,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   BorderRadius _getIncomingBorderRadius() {
     const double outerR = 18.0;
@@ -305,220 +401,381 @@ class _MessageCardState extends State<MessageCard> {
     );
   }
 
+  Widget _buildMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final color =
+        isDestructive ? const Color(0xFFDC2626) : context.textPrimaryColor;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: AppTypography.fontFamily,
+                fontSize: 14.5,
+                fontWeight: isDestructive ? FontWeight.w600 : FontWeight.w500,
+                color: color,
+              ),
+            ),
+            Icon(icon, color: color, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuDivider(BuildContext context) {
+    return Divider(
+      height: 1,
+      thickness: 0.6,
+      color:
+          context.isDark ? const Color(0xFF2C2C30) : const Color(0xFFE4E4E8),
+    );
+  }
+
   void _showMessageOptions() {
-    AppHaptics.medium();
+    AppHaptics.heavy();
     final bool isMe = APIs.myUid == widget.message.fromId;
 
-    showModalBottomSheet(
+    final RenderBox? renderBox =
+        _bubbleKey.currentContext?.findRenderObject() as RenderBox?;
+    final Offset globalOffset =
+        renderBox?.localToGlobal(Offset.zero) ?? const Offset(20, 200);
+    final Size bubbleSize = renderBox?.size ?? const Size(220, 60);
+
+    showGeneralDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Floating Quick Reaction Emoji Capsule (Telegram / iOS Style with Frosted Blur)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: context.surfaceColor
-                            .withValues(alpha: context.isDark ? 0.85 : 0.92),
-                        borderRadius: BorderRadius.circular(28),
-                        border:
-                            Border.all(color: context.borderColor, width: 0.8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                                alpha: context.isDark ? 0.35 : 0.08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return const SizedBox.shrink();
+      },
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+        final isDark = dialogContext.isDark;
+        final curvedAnim = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        final screenHeight = MediaQuery.sizeOf(dialogContext).height;
+        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
+        final topPadding = MediaQuery.paddingOf(dialogContext).top;
+        final bottomPadding = MediaQuery.paddingOf(dialogContext).bottom;
+
+        const double reactionHeight = 50.0;
+        const double menuWidth = 220.0;
+        const double menuItemHeight = 44.0;
+        int menuActionCount = 1; // Reply
+        if (widget.message.type == Type.text) menuActionCount++; // Copy
+        if (isMe && widget.message.type == Type.text) menuActionCount++; // Edit
+        if (isMe) menuActionCount++; // Delete
+        final double menuHeight = menuActionCount * menuItemHeight + 8;
+
+        final double totalClusterHeight =
+            reactionHeight + 10 + bubbleSize.height + 10 + menuHeight;
+        final double availableHeight =
+            screenHeight - topPadding - bottomPadding - 32;
+
+        double targetY = globalOffset.dy - reactionHeight - 10;
+        final double minY = topPadding + 16;
+        final double maxY = screenHeight - bottomPadding - 16;
+
+        if (totalClusterHeight <= availableHeight) {
+          if (targetY < minY) {
+            targetY = minY;
+          } else if (targetY + totalClusterHeight > maxY) {
+            targetY = maxY - totalClusterHeight;
+          }
+        } else {
+          targetY = minY;
+        }
+
+        const double horizontalPadding = 16.0;
+
+        return Stack(
+          children: [
+            // Full Screen Frosted Blur Backdrop with Tap-to-Dismiss
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  AppHaptics.light();
+                  Navigator.pop(dialogContext);
+                },
+                child: AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, _) {
+                    return BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: (16.0 * animation.value).clamp(0.01, 16.0),
+                        sigmaY: (16.0 * animation.value).clamp(0.01, 16.0),
                       ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            '❤️',
-                            '👍',
-                            '👎',
-                            '🔥',
-                            '😂',
-                            '🎉',
-                            '😮',
-                            '😢',
-                            '🙏'
-                          ].map((emoji) {
-                            final bool isSelected =
-                                widget.message.reaction == emoji;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () {
-                                AppHaptics.selection();
-                                Navigator.pop(context);
-                                // Toggle emoji: tap again to remove reaction
-                                APIs.setMessageReaction(
-                                    widget.message, isSelected ? '' : emoji);
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        color: Colors.black.withValues(
+                          alpha: (isDark ? 0.65 : 0.35) * animation.value,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // Magnetic Floating Cluster
+            Positioned(
+              top: targetY,
+              left: isMe ? null : horizontalPadding,
+              right: isMe ? horizontalPadding : null,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: availableHeight,
+                  maxWidth: screenWidth - 32,
+                ),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.92, end: 1.0)
+                          .animate(curvedAnim),
+                      alignment: isMe ? Alignment.topRight : Alignment.topLeft,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: isMe
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
+                          // 1. Floating Quick Reaction Emoji Capsule (iOS / Telegram Style)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                              child: Container(
+                                height: reactionHeight,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 4),
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? (context.isDark
-                                          ? Colors.white.withValues(alpha: 0.2)
-                                          : Colors.black.withValues(alpha: 0.1))
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: context.textPrimaryColor,
-                                          width: 1.5)
-                                      : null,
+                                  color: dialogContext.surfaceColor.withValues(
+                                      alpha: isDark ? 0.85 : 0.94),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.16)
+                                        : Colors.black.withValues(alpha: 0.08),
+                                    width: 0.8,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                          alpha: isDark ? 0.45 : 0.12),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
                                 ),
-                                child: MediaQuery.withClampedTextScaling(
-                                  maxScaleFactor: 1.2,
-                                  child: Text(
-                                    emoji,
-                                    style: const TextStyle(fontSize: 22),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      '❤️',
+                                      '👍',
+                                      '👎',
+                                      '🔥',
+                                      '😂',
+                                      '🎉',
+                                      '😮',
+                                      '😢',
+                                      '🙏'
+                                    ].map((emoji) {
+                                      final bool isSelected =
+                                          widget.message.reaction == emoji;
+                                      return InkWell(
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                        onTap: () {
+                                          AppHaptics.selection();
+                                          Navigator.pop(dialogContext);
+                                          APIs.setMessageReaction(
+                                            widget.message,
+                                            isSelected ? '' : emoji,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 7, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? (isDark
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.22)
+                                                    : Colors.black.withValues(
+                                                        alpha: 0.10))
+                                                : Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                          child: Text(
+                                            emoji,
+                                            style:
+                                                const TextStyle(fontSize: 22),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // 2. Magnetically Elevated Message Bubble Preview
+                          IgnorePointer(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                        alpha: isDark ? 0.55 : 0.22),
+                                    blurRadius: 28,
+                                    spreadRadius: 2,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Transform.scale(
+                                scale: 1.03,
+                                alignment: isMe
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: isMe ? _myMessage() : _otherMessage(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // 3. iOS Frosted Glass Context Menu Card
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                              child: Container(
+                                width: menuWidth,
+                                decoration: BoxDecoration(
+                                  color: dialogContext.surfaceColor.withValues(
+                                      alpha: isDark ? 0.88 : 0.94),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.15)
+                                        : Colors.black.withValues(alpha: 0.08),
+                                    width: 0.8,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                          alpha: isDark ? 0.40 : 0.12),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildMenuItem(
+                                        context: dialogContext,
+                                        icon: Icons.reply_rounded,
+                                        label: 'Reply',
+                                        onTap: () {
+                                          Navigator.pop(dialogContext);
+                                          AppHaptics.light();
+                                          widget.onSwipeReply
+                                              ?.call(widget.message);
+                                        },
+                                      ),
+                                      if (widget.message.type ==
+                                          Type.text) ...[
+                                        _buildMenuDivider(dialogContext),
+                                        _buildMenuItem(
+                                          context: dialogContext,
+                                          icon: Icons.copy_rounded,
+                                          label: 'Copy',
+                                          onTap: () {
+                                            Navigator.pop(dialogContext);
+                                            AppHaptics.light();
+                                            Clipboard.setData(ClipboardData(
+                                                text: widget.message.msg));
+                                            Dialogs.showSnackbar(context,
+                                                'Text copied to clipboard!');
+                                          },
+                                        ),
+                                      ],
+                                      if (isMe &&
+                                          widget.message.type ==
+                                              Type.text) ...[
+                                        _buildMenuDivider(dialogContext),
+                                        _buildMenuItem(
+                                          context: dialogContext,
+                                          icon: Icons.edit_rounded,
+                                          label: 'Edit',
+                                          onTap: () {
+                                            Navigator.pop(dialogContext);
+                                            AppHaptics.light();
+                                            _showEditMessageDialog();
+                                          },
+                                        ),
+                                      ],
+                                      if (isMe) ...[
+                                        _buildMenuDivider(dialogContext),
+                                        _buildMenuItem(
+                                          context: dialogContext,
+                                          icon: Icons.delete_outline_rounded,
+                                          label: 'Delete',
+                                          isDestructive: true,
+                                          onTap: () async {
+                                            Navigator.pop(dialogContext);
+                                            AppHaptics.heavy();
+                                            await APIs.deleteMessage(
+                                                widget.message);
+                                            if (mounted) {
+                                              Dialogs.showSnackbar(
+                                                  context, 'Message deleted');
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                AppSpacing.gapH10,
-
-                // Clean Contextual Actions Card
-                Container(
-                  decoration: BoxDecoration(
-                    color: context.surfaceColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: context.borderColor),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                            alpha: context.isDark ? 0.35 : 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.reply_rounded,
-                            color: context.textPrimaryColor),
-                        title: Text(
-                          'Reply',
-                          style: TextStyle(
-                            fontFamily: AppTypography.fontFamily,
-                            color: context.textPrimaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        onTap: () {
-                          AppHaptics.light();
-                          Navigator.pop(context);
-                          if (widget.onSwipeReply != null) {
-                            widget.onSwipeReply!(widget.message);
-                          }
-                        },
-                      ),
-                      if (widget.message.type == Type.text) ...[
-                        Divider(
-                            height: 1,
-                            indent: 54,
-                            color: context.borderColor),
-                        ListTile(
-                          leading: Icon(Icons.copy_rounded,
-                              color: context.textPrimaryColor),
-                          title: Text(
-                            'Copy Text',
-                            style: TextStyle(
-                              fontFamily: AppTypography.fontFamily,
-                              color: context.textPrimaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onTap: () {
-                            AppHaptics.light();
-                            Navigator.pop(context);
-                            Clipboard.setData(
-                                ClipboardData(text: widget.message.msg));
-                            Dialogs.showSnackbar(
-                                context, 'Text copied to clipboard!');
-                          },
-                        ),
-                      ],
-                      if (isMe && widget.message.type == Type.text) ...[
-                        Divider(
-                            height: 1,
-                            indent: 54,
-                            color: context.borderColor),
-                        ListTile(
-                          leading: Icon(Icons.edit_rounded,
-                              color: context.textPrimaryColor),
-                          title: Text(
-                            'Edit Message',
-                            style: TextStyle(
-                              fontFamily: AppTypography.fontFamily,
-                              color: context.textPrimaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _showEditMessageDialog();
-                          },
-                        ),
-                      ],
-                      if (isMe) ...[
-                        Divider(
-                            height: 1,
-                            indent: 54,
-                            color: context.borderColor),
-                        ListTile(
-                          leading: const Icon(Icons.delete_outline_rounded,
-                              color: AppTheme.danger),
-                          title: const Text(
-                            'Delete Message',
-                            style: TextStyle(
-                              fontFamily: AppTypography.fontFamily,
-                              color: AppTheme.danger,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onTap: () async {
-                            AppHaptics.heavy();
-                            Navigator.pop(context);
-                            await APIs.deleteMessage(widget.message);
-                            if (mounted) {
-                              Dialogs.showSnackbar(context, 'Message deleted');
-                            }
-                          },
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         );
       },
     );
@@ -564,8 +821,28 @@ class _MessageCardState extends State<MessageCard> {
           ),
         ),
         child: GestureDetector(
-          onLongPress: _showMessageOptions,
-          child: isMe ? _myMessage() : _otherMessage(),
+          onTapDown: (_) => setState(() => _pressScale = 0.97),
+          onTapUp: (_) => setState(() => _pressScale = 1.0),
+          onTapCancel: () => setState(() => _pressScale = 1.0),
+          onDoubleTap: () {
+            setState(() => _pressScale = 1.0);
+            AppHaptics.medium();
+            _heartAnimController.forward(from: 0.0);
+            APIs.setMessageReaction(widget.message, '❤️');
+          },
+          onLongPress: () {
+            setState(() => _pressScale = 1.0);
+            _showMessageOptions();
+          },
+          child: AnimatedScale(
+            scale: _pressScale,
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOutCubic,
+            child: KeyedSubtree(
+              key: _bubbleKey,
+              child: isMe ? _myMessage() : _otherMessage(),
+            ),
+          ),
         ),
       ),
     );
@@ -923,7 +1200,35 @@ class _MessageCardState extends State<MessageCard> {
       APIs.updateMessageReadStatus(widget.message);
     }
 
-    final borderColor = context.incomingBubbleBorderColor;
+    final isDark = context.isDark;
+
+    // Liquid Glass / Frosted Glass dual-tone translucent gradient
+    final incomingGradient = isDark
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF28282E), Color(0xFF1D1D22)],
+          )
+        : const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFFFFF), Color(0xFFECECEF)],
+          );
+
+    final incomingBorder = Border.all(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.16)
+          : Colors.white.withValues(alpha: 0.85),
+      width: 0.75,
+    );
+
+    final incomingShadow = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ];
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -940,11 +1245,10 @@ class _MessageCardState extends State<MessageCard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: context.incomingBubbleColor,
+                  gradient: incomingGradient,
                   borderRadius: _getIncomingBorderRadius(),
-                  border: borderColor != null
-                      ? Border.all(color: borderColor, width: 0.6)
-                      : null,
+                  border: incomingBorder,
+                  boxShadow: incomingShadow,
                 ),
                 child: Padding(
                   padding: (widget.message.type == Type.image &&
@@ -982,31 +1286,34 @@ class _MessageCardState extends State<MessageCard> {
                   left: 10,
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: context.isDark
-                          ? const Color(0xFF27272A)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      color: isDark
+                          ? const Color(0xFF232328).withValues(alpha: 0.95)
+                          : Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: context.isDark
-                              ? const Color(0xFF38383C)
-                              : const Color(0xFFE4E4E7),
-                          width: 0.8),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.18)
+                            : Colors.black.withValues(alpha: 0.08),
+                        width: 0.8,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 4,
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.35 : 0.08),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Text(
                       widget.message.reaction,
-                      style: const TextStyle(fontSize: 13),
+                      style: const TextStyle(fontSize: 13.5),
                     ),
                   ),
                 ),
+              _buildHeartBurstOverlay(),
             ],
           ),
         ),
@@ -1016,7 +1323,33 @@ class _MessageCardState extends State<MessageCard> {
 
   // Sent by me (Right aligned)
   Widget _myMessage() {
-    final borderColor = context.outgoingBubbleBorderColor;
+    final isDark = context.isDark;
+
+    // Liquid Glass / Obsidian dual-tone translucent gradient
+    final outgoingGradient = isDark
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF38383F), Color(0xFF28282E)],
+          )
+        : const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF27272A), Color(0xFF141416)],
+          );
+
+    final outgoingBorder = Border.all(
+      color: Colors.white.withValues(alpha: isDark ? 0.26 : 0.22),
+      width: 0.85,
+    );
+
+    final outgoingShadow = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.16),
+        blurRadius: 8,
+        offset: const Offset(0, 2.5),
+      ),
+    ];
 
     return Align(
       alignment: Alignment.centerRight,
@@ -1033,11 +1366,10 @@ class _MessageCardState extends State<MessageCard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: context.outgoingBubbleColor,
+                  gradient: outgoingGradient,
                   borderRadius: _getOutgoingBorderRadius(),
-                  border: borderColor != null
-                      ? Border.all(color: borderColor, width: 0.6)
-                      : null,
+                  border: outgoingBorder,
+                  boxShadow: outgoingShadow,
                 ),
                 child: Padding(
                   padding: (widget.message.type == Type.image &&
@@ -1075,31 +1407,34 @@ class _MessageCardState extends State<MessageCard> {
                   right: 10,
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: context.isDark
-                          ? const Color(0xFF27272A)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      color: isDark
+                          ? const Color(0xFF232328).withValues(alpha: 0.95)
+                          : Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: context.isDark
-                              ? const Color(0xFF38383C)
-                              : const Color(0xFFE4E4E7),
-                          width: 0.8),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.18)
+                            : Colors.black.withValues(alpha: 0.08),
+                        width: 0.8,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 4,
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.35 : 0.08),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Text(
                       widget.message.reaction,
-                      style: const TextStyle(fontSize: 13),
+                      style: const TextStyle(fontSize: 13.5),
                     ),
                   ),
                 ),
+              _buildHeartBurstOverlay(),
             ],
           ),
         ),

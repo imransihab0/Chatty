@@ -79,6 +79,26 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
 
     _player.playerStateStream.listen((state) {
       if (!mounted) return;
+
+      if (state.playing) {
+        _playPauseController.forward();
+      } else {
+        _playPauseController.reverse();
+      }
+
+      final bool isBuffering =
+          state.processingState == ProcessingState.loading ||
+          state.processingState == ProcessingState.buffering;
+
+      if (state.processingState == ProcessingState.ready ||
+          state.processingState == ProcessingState.completed) {
+        if (_isLoading) {
+          setState(() => _isLoading = false);
+        }
+      } else if (isBuffering && !_isLoading) {
+        setState(() => _isLoading = true);
+      }
+
       if (state.processingState == ProcessingState.completed) {
         _player.seek(Duration.zero);
         _player.pause();
@@ -86,6 +106,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
         setState(() {
           _position = Duration.zero;
           _scrubFraction = null;
+          _isLoading = false;
         });
       }
     });
@@ -104,10 +125,10 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
       if (_position > Duration.zero) {
         await _player.seek(_position);
       }
-      await _player.play();
       if (!mounted) return;
-      _playPauseController.forward();
       setState(() => _isLoading = false);
+      _playPauseController.forward();
+      unawaited(_player.play());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -133,8 +154,8 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
       if (_player.duration == null) {
         _loadAndPlay();
       } else {
-        _player.play();
         _playPauseController.forward();
+        unawaited(_player.play());
       }
     }
   }

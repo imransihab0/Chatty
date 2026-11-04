@@ -20,6 +20,10 @@ class ConversationController {
   static final ValueNotifier<Map<String, Message>> lastMessagesNotifier =
       ValueNotifier<Map<String, Message>>({});
 
+  /// Reactive notifier containing manual unread status for conversations
+  static final ValueNotifier<Set<String>> manualUnreadNotifier =
+      ValueNotifier<Set<String>>({});
+
   static final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
       _subscriptions = {};
 
@@ -64,11 +68,32 @@ class ConversationController {
     return lastMessagesNotifier.value[userId];
   }
 
-  /// Checks if a conversation has unread incoming messages
+  /// Checks if a conversation has unread incoming messages or was manually marked unread
   static bool isUnread(String userId) {
+    if (manualUnreadNotifier.value.contains(userId)) return true;
     final msg = lastMessageFor(userId);
     if (msg == null) return false;
     return msg.read.isEmpty && msg.fromId != APIs.myUid;
+  }
+
+  /// Toggles manual unread status
+  static void toggleMarkUnread(String userId) {
+    final current = Set<String>.from(manualUnreadNotifier.value);
+    if (current.contains(userId)) {
+      current.remove(userId);
+    } else {
+      current.add(userId);
+    }
+    manualUnreadNotifier.value = current;
+  }
+
+  /// Clears manual unread flag
+  static void markRead(String userId) {
+    if (manualUnreadNotifier.value.contains(userId)) {
+      final current = Set<String>.from(manualUnreadNotifier.value);
+      current.remove(userId);
+      manualUnreadNotifier.value = current;
+    }
   }
 
   /// Checks if the latest conversation item is a photo or voice note

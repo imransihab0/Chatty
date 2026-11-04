@@ -593,9 +593,27 @@ class _ChatScreenState extends State<ChatScreen> {
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusScope.of(context).unfocus(),
-          child: Column(
-            children: [
-              _buildSearchStepperBar(),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: context.isDark
+                    ? const [
+                        Color(0xFF000000),
+                        Color(0xFF0D0D10),
+                        Color(0xFF070709),
+                      ]
+                    : const [
+                        Color(0xFFF9F9FB),
+                        Color(0xFFF1F1F5),
+                        Color(0xFFECECF1),
+                      ],
+              ),
+            ),
+            child: Column(
+              children: [
+                _buildSearchStepperBar(),
             Expanded(
               key: const ValueKey('chat_messages_expanded'),
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -830,6 +848,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     ),
   ),
+),
 );
 }
 
