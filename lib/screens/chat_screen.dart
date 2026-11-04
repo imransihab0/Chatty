@@ -38,6 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
   late final ScrollController _scrollController;
 
   bool _isUploading = false;
+  int _uploadingCount = 0;
   bool _isSearching = false;
   String _searchQuery = '';
   Message? _replyMessage;
@@ -116,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _showFloatingDateNotifier.dispose();
     _floatingDateTimer?.cancel();
     _typingTimer?.cancel();
-    if (_isTyping) {
+    if (_isTyping && widget.user.id != APIs.myUid) {
       APIs.updateTypingStatus(widget.user, false);
     }
     _textController.dispose();
@@ -125,6 +126,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onTextChanged(String val) {
+    if (widget.user.id == APIs.myUid) return;
     if (val.trim().isNotEmpty) {
       final int now = DateTime.now().millisecondsSinceEpoch;
       // Notify typing immediately, and pulse every 1200ms while active
@@ -414,21 +416,35 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _sendImageFile(File file) async {
+  Future<void> _sendImageFiles(List<File> files) async {
+    if (files.isEmpty) return;
     try {
-      setState(() => _isUploading = true);
-      final success = await APIs.sendChatImage(widget.user, file);
+      setState(() {
+        _isUploading = true;
+        _uploadingCount = files.length;
+      });
+      final bool success;
+      if (files.length == 1) {
+        success = await APIs.sendChatImage(widget.user, files.first);
+      } else {
+        success = await APIs.sendChatImages(widget.user, files);
+      }
       if (!success && mounted) {
         Dialogs.showSnackbar(
-            context, 'Failed to send image. Storage limit may be reached.');
+            context, 'Failed to send photo(s). Storage limit may be reached.');
       }
     } catch (e) {
-      log('Error sending image: $e');
+      log('Error sending images: $e');
       if (mounted) {
-        Dialogs.showSnackbar(context, 'Error uploading photo.');
+        Dialogs.showSnackbar(context, 'Error uploading photo(s).');
       }
     } finally {
-      if (mounted) setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadingCount = 0;
+        });
+      }
     }
   }
 
@@ -705,6 +721,59 @@ class _ChatScreenState extends State<ChatScreen> {
                         snapshot.connectionState == ConnectionState.none) {
                       return const ChatMessagesSkeletonList();
                     }
+                    if (widget.user.id == APIs.myUid) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF2563EB),
+                                      Color(0xFF1D4ED8)
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.bookmark_rounded,
+                                  color: Colors.white,
+                                  size: 36,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Saved Messages',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.textPrimaryColor,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Forward messages here to bookmark them, or send photos and voice notes to access across all your devices.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 13,
+                                  color: context.textSecondaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -779,6 +848,11 @@ class _ChatScreenState extends State<ChatScreen> {
                               _list[index - 1].fromId == msg.fromId &&
                               !MyDateUtil.isDifferentDay(msg.sent, _list[index - 1].sent);
 
+                          final bool isCurrentMatch = _isSearching &&
+                              _matchIndices.isNotEmpty &&
+                              _currentMatchIndex < _matchIndices.length &&
+                              _matchIndices[_currentMatchIndex] == index;
+
                           return Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -788,6 +862,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 message: msg,
                                 highlightQuery:
                                     _isSearching ? _searchQuery : null,
+                                isCurrentMatch: isCurrentMatch,
                                 isPrevSame: isPrevSame,
                                 isNextSame: isNextSame,
                                 onSwipeReply: (m) {
@@ -834,7 +909,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Uploading photo...',
+                        _uploadingCount > 1
+                            ? 'Uploading $_uploadingCount photos...'
+                            : 'Uploading photo...',
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
@@ -890,7 +967,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     Dialogs.showSnackbar(context, 'Failed to send voice note');
                   }
                 },
-                onSendImage: (file) {
+                onSendImages: (files) {
                   if (_scrollController.hasClients && _scrollController.offset > 0) {
                     _scrollController.animateTo(
                       0,
@@ -898,7 +975,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       curve: Curves.easeOutCubic,
                     );
                   }
-                  _sendImageFile(file);
+                  _sendImageFiles(files);
                 },
                 onTextChanged: _onTextChanged,
               ),
@@ -958,6 +1035,127 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // App Bar
   Widget _appBar() {
+    if (widget.user.id == APIs.myUid) {
+      return Row(
+        children: [
+          IconButton(
+            splashRadius: 22,
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              color: context.textPrimaryColor,
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.bookmark_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  AppSpacing.gapW12,
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Saved Messages',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'cloud notebook',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: context.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            splashRadius: 22,
+            tooltip: 'Search messages',
+            onPressed: () => setState(() => _isSearching = true),
+            icon: Icon(
+              Icons.search_rounded,
+              color: context.textPrimaryColor,
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert_rounded,
+              color: context.textPrimaryColor,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: context.borderColor, width: 1),
+            ),
+            color: context.surfaceColor,
+            elevation: 4,
+            onSelected: (val) {
+              if (val == 'wallpaper') {
+                AppHaptics.light();
+                WallpaperPickerSheet.show(context);
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'wallpaper',
+                child: Row(
+                  children: [
+                    Icon(Icons.wallpaper_rounded,
+                        size: 19, color: context.textPrimaryColor),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Chat Wallpaper',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: context.textPrimaryColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _userInfoStream,
       builder: (context, snapshot) {

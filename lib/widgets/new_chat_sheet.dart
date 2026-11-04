@@ -418,54 +418,130 @@ class _NewChatSheetState extends State<NewChatSheet> {
       );
     }
 
-    // Default hint before typing
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: context.primarySoftColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.info_outline_rounded,
-              color: context.textSecondaryColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+    // Default hint before typing with quick Saved Messages shortcut
+    return ListView(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      children: [
+        InkWell(
+          onTap: () => _openChatWithUser(APIs.savedMessagesUser),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  'Add by Username or Email',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimaryColor,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.bookmark_rounded,
+                        color: Colors.white, size: 22),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  'Type anyone\'s username (e.g. @imransihab) or email address to start a direct message.',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    color: context.textMutedColor,
-                    height: 1.35,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Saved Messages',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Message yourself to store notes & photos',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: context.textSecondaryColor,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: context.textMutedColor,
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        Divider(
+            height: 1,
+            thickness: 0.6,
+            indent: 74,
+            color: context.borderColor),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: context.primarySoftColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  color: context.textSecondaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Add by Username or Email',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Type anyone\'s username (e.g. @imransihab) or email address to start a direct message.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: context.textMutedColor,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

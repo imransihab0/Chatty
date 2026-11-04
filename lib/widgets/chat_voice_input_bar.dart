@@ -24,7 +24,8 @@ class ChatVoiceInputBar extends StatefulWidget {
   final VoidCallback onClearReply;
   final Function(String text, String replyMsg, String replyUser) onSendText;
   final Function(File audioFile, int durationMs) onSendVoice;
-  final Function(File imageFile) onSendImage;
+  final Function(File imageFile)? onSendImage;
+  final Function(List<File> imageFiles)? onSendImages;
   final Function(String val) onTextChanged;
 
   const ChatVoiceInputBar({
@@ -35,7 +36,8 @@ class ChatVoiceInputBar extends StatefulWidget {
     required this.onClearReply,
     required this.onSendText,
     required this.onSendVoice,
-    required this.onSendImage,
+    this.onSendImage,
+    this.onSendImages,
     required this.onTextChanged,
   });
 
@@ -437,10 +439,15 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                       final ImagePicker picker = ImagePicker();
                       final XFile? image = await picker.pickImage(
                         source: ImageSource.camera,
-                        imageQuality: 70,
+                        imageQuality: 75,
                       );
                       if (image != null) {
-                        widget.onSendImage(File(image.path));
+                        final file = File(image.path);
+                        if (widget.onSendImages != null) {
+                          widget.onSendImages!([file]);
+                        } else {
+                          widget.onSendImage?.call(file);
+                        }
                       }
                     },
                   ),
@@ -452,9 +459,16 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                       AppHaptics.selection();
                       final ImagePicker picker = ImagePicker();
                       final List<XFile> images =
-                          await picker.pickMultiImage(imageQuality: 70);
-                      for (var i in images) {
-                        widget.onSendImage(File(i.path));
+                          await picker.pickMultiImage(imageQuality: 75);
+                      if (images.isNotEmpty) {
+                        final files = images.map((x) => File(x.path)).toList();
+                        if (widget.onSendImages != null) {
+                          widget.onSendImages!(files);
+                        } else {
+                          for (var f in files) {
+                            widget.onSendImage?.call(f);
+                          }
+                        }
                       }
                     },
                   ),

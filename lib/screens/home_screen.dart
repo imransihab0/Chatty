@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
+import 'package:chatty/helper/my_date_util.dart';
 import 'package:chatty/models/chat_user.dart';
 import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/chat_screen.dart';
@@ -753,8 +754,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               : const SizedBox.shrink(),
         ),
 
+        // Saved Messages Cloud Notebook (Pinned at top of All chats or matching search)
+        if ((!_isSearching && _selectedFilter == HomeFilter.all) ||
+            (_isSearching &&
+                ('saved messages'.contains(_searchQuery) ||
+                    'notes'.contains(_searchQuery) ||
+                    'saved'.contains(_searchQuery))))
+          _savedMessagesTile(),
+
         // Empty state when no matches/chats exist
-        if (!hasLocal && !hasGlobal)
+        if (!hasLocal && !hasGlobal && (_selectedFilter != HomeFilter.all || _isSearching))
           _buildEmptyState()
         else ...[
           // Local Contacts Section
@@ -815,6 +824,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ],
     ),
   );
+  }
+
+  // Saved Messages Cloud Bookmark Tile
+  Widget _savedMessagesTile() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: APIs.getLastMessages(APIs.savedMessagesUser),
+      builder: (context, snapshot) {
+        final docs = snapshot.data?.docs;
+        String snippet = 'Cloud bookmarks & personal notes';
+        String timeStr = '';
+        if (docs != null && docs.isNotEmpty) {
+          final lastMsg = Message.fromJson(docs[0].data());
+          if (lastMsg.type == Type.image) {
+            final count = lastMsg.msg.split('|||').length;
+            snippet = count > 1 ? '📷 $count Photos' : '📷 Photo';
+          } else if (lastMsg.type == Type.audio) {
+            snippet = '🎙️ Voice note';
+          } else {
+            snippet = lastMsg.msg;
+          }
+          timeStr =
+              MyDateUtil.getLastMessageTime(context: context, time: lastMsg.sent);
+        }
+
+        return _SavedMessagesCard(
+          snippet: snippet,
+          time: timeStr,
+          onTap: () {
+            ChatUserCard.closeActiveDrawer();
+            AppHaptics.light();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(user: APIs.savedMessagesUser),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // Dedicated High-End Empty States
@@ -1127,6 +1176,150 @@ class _TactileFilterChipState extends State<_TactileFilterChip> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Telegram-Grade Saved Messages Personal Cloud Notebook Card
+class _SavedMessagesCard extends StatefulWidget {
+  final String snippet;
+  final String time;
+  final VoidCallback onTap;
+
+  const _SavedMessagesCard({
+    required this.snippet,
+    required this.time,
+    required this.onTap,
+  });
+
+  @override
+  State<_SavedMessagesCard> createState() => _SavedMessagesCardState();
+}
+
+class _SavedMessagesCardState extends State<_SavedMessagesCard> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: _scale,
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      child: Material(
+        color: context.surfaceColor,
+        child: InkWell(
+          onHighlightChanged: (highlighted) {
+            setState(() => _scale = highlighted ? 0.985 : 1.0);
+          },
+          onTap: widget.onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    // Distinct Telegram Blue Gradient Avatar with Bookmark
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2563EB)
+                                .withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.bookmark_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                    AppSpacing.gapW14,
+
+                    // Title & Snippet
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Saved Messages',
+                                style: TextStyle(
+                                  fontFamily: AppTypography.fontFamily,
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.textPrimaryColor,
+                                ),
+                              ),
+                              AppSpacing.gapW6,
+                              Icon(
+                                Icons.cloud_outlined,
+                                size: 14,
+                                color: context.textSecondaryColor,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.snippet,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: AppTypography.fontFamily,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: context.textSecondaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Timestamp
+                    if (widget.time.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.time,
+                        style: TextStyle(
+                          fontFamily: AppTypography.fontFamily,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: context.textMutedColor,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Divider(
+                height: 0.8,
+                thickness: 0.6,
+                indent: 82,
+                endIndent: 0,
+                color: context.isDark
+                    ? const Color(0xFF27272A)
+                    : const Color(0xFFE4E4E8),
+              ),
+            ],
           ),
         ),
       ),

@@ -26,6 +26,7 @@ class MessageCard extends StatefulWidget {
     super.key,
     required this.message,
     this.highlightQuery,
+    this.isCurrentMatch = false,
     this.onSwipeReply,
     this.isPrevSame = false,
     this.isNextSame = false,
@@ -33,6 +34,7 @@ class MessageCard extends StatefulWidget {
 
   final Message message;
   final String? highlightQuery;
+  final bool isCurrentMatch;
   final Function(Message)? onSwipeReply;
   final bool isPrevSame;
   final bool isNextSame;
@@ -1152,6 +1154,14 @@ class _MessageCardState extends State<MessageCard>
         context: context, time: widget.message.sent);
     final isRead = widget.message.read.isNotEmpty;
 
+    final urls = widget.message.msg
+        .split('|||')
+        .where((u) => u.trim().isNotEmpty)
+        .toList();
+    if (urls.length > 1) {
+      return _buildImageCollage(urls, isMe, sentTime, isRead);
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -1182,75 +1192,348 @@ class _MessageCardState extends State<MessageCard>
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: 220,
-                placeholder: (context, url) => Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: isMe ? Colors.white24 : context.surfaceMutedColor,
+                  placeholder: (context, url) => Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: isMe ? Colors.white24 : context.surfaceMutedColor,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isMe ? Colors.white : context.textPrimaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 120,
+                    width: double.infinity,
+                    color: isMe ? Colors.white24 : context.surfaceMutedColor,
+                    child: Icon(
+                      Icons.broken_image,
+                      size: 40,
+                      color: isMe ? Colors.white70 : context.textMutedColor,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 6,
+                  right: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          sentTime,
+                          style: const TextStyle(
+                            fontFamily: AppTypography.fontFamily,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 3.5),
+                          Icon(
+                            isRead
+                                ? Icons.done_all_rounded
+                                : Icons.done_rounded,
+                            color: isRead
+                                ? AppTheme.success
+                                : Colors.white.withValues(alpha: 0.85),
+                            size: 13,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Telegram-style Multi-Photo Masonry Collage
+  Widget _buildImageCollage(
+    List<String> urls,
+    bool isMe,
+    String sentTime,
+    bool isRead,
+  ) {
+    final double maxWidth = MediaQuery.sizeOf(context).width * 0.72;
+    const double gap = 3.0;
+
+    Widget collageBody;
+    if (urls.length == 2) {
+      final double cellWidth = (maxWidth - gap) / 2;
+      const double cellHeight = 160.0;
+      collageBody = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildCollageCell(
+            url: urls[0],
+            index: 0,
+            width: cellWidth,
+            height: cellHeight,
+            borderRadius:
+                const BorderRadius.horizontal(left: Radius.circular(12)),
+            isMe: isMe,
+            sentTime: sentTime,
+          ),
+          const SizedBox(width: gap),
+          _buildCollageCell(
+            url: urls[1],
+            index: 1,
+            width: cellWidth,
+            height: cellHeight,
+            borderRadius:
+                const BorderRadius.horizontal(right: Radius.circular(12)),
+            isMe: isMe,
+            sentTime: sentTime,
+          ),
+        ],
+      );
+    } else if (urls.length == 3) {
+      final double halfWidth = (maxWidth - gap) / 2;
+      collageBody = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildCollageCell(
+            url: urls[0],
+            index: 0,
+            width: maxWidth,
+            height: 130.0,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(12)),
+            isMe: isMe,
+            sentTime: sentTime,
+          ),
+          const SizedBox(height: gap),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCollageCell(
+                url: urls[1],
+                index: 1,
+                width: halfWidth,
+                height: 100.0,
+                borderRadius:
+                    const BorderRadius.only(bottomLeft: Radius.circular(12)),
+                isMe: isMe,
+                sentTime: sentTime,
+              ),
+              const SizedBox(width: gap),
+              _buildCollageCell(
+                url: urls[2],
+                index: 2,
+                width: halfWidth,
+                height: 100.0,
+                borderRadius:
+                    const BorderRadius.only(bottomRight: Radius.circular(12)),
+                isMe: isMe,
+                sentTime: sentTime,
+              ),
+            ],
+          ),
+        ],
+      );
+    } else {
+      // 4 or more photos (2x2 grid)
+      final double cellWidth = (maxWidth - gap) / 2;
+      const double cellHeight = 110.0;
+      final int extra = urls.length > 4 ? urls.length - 3 : 0;
+
+      collageBody = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCollageCell(
+                url: urls[0],
+                index: 0,
+                width: cellWidth,
+                height: cellHeight,
+                borderRadius:
+                    const BorderRadius.only(topLeft: Radius.circular(12)),
+                isMe: isMe,
+                sentTime: sentTime,
+              ),
+              const SizedBox(width: gap),
+              _buildCollageCell(
+                url: urls[1],
+                index: 1,
+                width: cellWidth,
+                height: cellHeight,
+                borderRadius:
+                    const BorderRadius.only(topRight: Radius.circular(12)),
+                isMe: isMe,
+                sentTime: sentTime,
+              ),
+            ],
+          ),
+          const SizedBox(height: gap),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCollageCell(
+                url: urls[2],
+                index: 2,
+                width: cellWidth,
+                height: cellHeight,
+                borderRadius:
+                    const BorderRadius.only(bottomLeft: Radius.circular(12)),
+                isMe: isMe,
+                sentTime: sentTime,
+              ),
+              const SizedBox(width: gap),
+              _buildCollageCell(
+                url: urls[3],
+                index: 3,
+                width: cellWidth,
+                height: cellHeight,
+                borderRadius:
+                    const BorderRadius.only(bottomRight: Radius.circular(12)),
+                isMe: isMe,
+                sentTime: sentTime,
+                extraCount: extra,
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          children: [
+            collageBody,
+            Positioned(
+              bottom: 6,
+              right: 8,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      sentTime,
+                      style: const TextStyle(
+                        fontFamily: AppTypography.fontFamily,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (isMe) ...[
+                      const SizedBox(width: 3.5),
+                      Icon(
+                        isRead
+                            ? Icons.done_all_rounded
+                            : Icons.done_rounded,
+                        color: isRead
+                            ? AppTheme.success
+                            : Colors.white.withValues(alpha: 0.85),
+                        size: 13,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollageCell({
+    required String url,
+    required int index,
+    required double width,
+    required double height,
+    required BorderRadius borderRadius,
+    required bool isMe,
+    required String sentTime,
+    int? extraCount,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MediaViewerScreen(
+              imageUrl: url,
+              heroTag: 'msg_img_${widget.message.sent}_$index',
+              title: isMe ? 'You' : 'Photo',
+              timestamp: sentTime,
+            ),
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Hero(
+                tag: 'msg_img_${widget.message.sent}_$index',
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: isMe ? Colors.white24 : context.surfaceMutedColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: isMe ? Colors.white24 : context.surfaceMutedColor,
+                    child: const Icon(Icons.broken_image, size: 28),
+                  ),
+                ),
+              ),
+              if (extraCount != null && extraCount > 0)
+                Container(
+                  color: Colors.black.withValues(alpha: 0.55),
                   child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isMe ? Colors.white : context.textPrimaryColor,
+                    child: Text(
+                      '+$extraCount',
+                      style: const TextStyle(
+                        fontFamily: AppTypography.fontFamily,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  height: 120,
-                  width: double.infinity,
-                  color: isMe ? Colors.white24 : context.surfaceMutedColor,
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 40,
-                    color: isMe ? Colors.white70 : context.textMutedColor,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 6,
-                right: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        sentTime,
-                        style: const TextStyle(
-                          fontFamily: AppTypography.fontFamily,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
-                      if (isMe) ...[
-                        const SizedBox(width: 3.5),
-                        Icon(
-                          isRead
-                              ? Icons.done_all_rounded
-                              : Icons.done_rounded,
-                          color: isRead
-                              ? AppTheme.success
-                              : Colors.white.withValues(alpha: 0.85),
-                          size: 13,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // Sent by other person (Left aligned)
   Widget _otherMessage() {
@@ -1281,17 +1564,25 @@ class _MessageCardState extends State<MessageCard>
     );
 
     final incomingShadow = [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.06),
-        blurRadius: 10,
-        offset: const Offset(0, 3),
-      ),
-      if (isDark)
+      if (widget.isCurrentMatch)
         BoxShadow(
-          color: Colors.white.withValues(alpha: 0.04),
-          blurRadius: 1,
-          offset: const Offset(0, -0.5),
+          color: (isDark ? Colors.amberAccent : Colors.amber).withValues(alpha: 0.65),
+          blurRadius: 18,
+          spreadRadius: 2.5,
+        )
+      else ...[
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.06),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
         ),
+        if (isDark)
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.04),
+            blurRadius: 1,
+            offset: const Offset(0, -0.5),
+          ),
+      ],
     ];
 
     return Align(
@@ -1408,16 +1699,24 @@ class _MessageCardState extends State<MessageCard>
     );
 
     final outgoingShadow = [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.18),
-        blurRadius: 10,
-        offset: const Offset(0, 3),
-      ),
-      BoxShadow(
-        color: Colors.white.withValues(alpha: isDark ? 0.06 : 0.05),
-        blurRadius: 1,
-        offset: const Offset(0, -0.5),
-      ),
+      if (widget.isCurrentMatch)
+        BoxShadow(
+          color: (isDark ? Colors.amberAccent : Colors.amber).withValues(alpha: 0.65),
+          blurRadius: 18,
+          spreadRadius: 2.5,
+        )
+      else ...[
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.18),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+        BoxShadow(
+          color: Colors.white.withValues(alpha: isDark ? 0.06 : 0.05),
+          blurRadius: 1,
+          offset: const Offset(0, -0.5),
+        ),
+      ],
     ];
 
     return Align(

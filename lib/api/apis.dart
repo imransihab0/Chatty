@@ -39,6 +39,19 @@ class APIs{
   static User get user => auth.currentUser!;
   static String get myUid => auth.currentUser?.uid ?? '';
 
+  static ChatUser get savedMessagesUser => ChatUser(
+        id: myUid,
+        name: 'Saved Messages',
+        email: me.email,
+        about: 'Personal cloud storage & notes',
+        image: '',
+        createdAt: me.createdAt,
+        isOnline: true,
+        lastActive: DateTime.now().millisecondsSinceEpoch.toString(),
+        pushToken: '',
+        username: me.username,
+      );
+
   //for checking if user exists or not?
   static Future<void> getMyInfo() async {
     final curUser = auth.currentUser;
@@ -308,7 +321,7 @@ class APIs{
       final Message message = Message(
           toId: chatUser.id,
           msg: msg,
-          read: '',
+          read: (chatUser.id == user.uid) ? time : '',
           type: type,
           sent: time,
           fromId: user.uid,
@@ -396,6 +409,46 @@ class APIs{
       return true;
     } catch (e) {
       log('Error sendChatImage: $e');
+      return false;
+    }
+  }
+
+  // send multiple images in parallel as an album
+  static Future<bool> sendChatImages(ChatUser chatUser, List<File> files) async {
+    if (files.isEmpty) return false;
+    if (files.length == 1) return sendChatImage(chatUser, files.first);
+
+    try {
+      final convoId = getConversationID(chatUser.id);
+      final List<String> uploadedUrls = [];
+
+      final uploadFutures = files.map((file) async {
+        if (R2StorageService.isConfigured) {
+          final r2Url = await R2StorageService.uploadChatImage(file, convoId);
+          if (r2Url != null) return r2Url;
+        }
+
+        final compressed = await ImageCompressor.compressUnder100Kb(file);
+        final ext = compressed.path.split('.').last;
+        final ref = storage.ref().child(
+            'images/$convoId/${DateTime.now().millisecondsSinceEpoch}_${file.hashCode}.$ext');
+        await ref.putFile(
+            compressed, SettableMetadata(contentType: 'image/$ext'));
+        return await ref.getDownloadURL();
+      });
+
+      final results = await Future.wait(uploadFutures);
+      for (final url in results) {
+        if (url.isNotEmpty) uploadedUrls.add(url);
+      }
+
+      if (uploadedUrls.isEmpty) return false;
+
+      final combined = uploadedUrls.join('|||');
+      await sendMessage(chatUser, combined, Type.image);
+      return true;
+    } catch (e) {
+      log('Error sendChatImages: $e');
       return false;
     }
   }
