@@ -275,6 +275,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
         _isPreviewing = false;
         _previewAudioFile = null;
       });
+      AppHaptics.light();
       widget.onSendVoice(file, durationMs);
       widget.onClearReply();
       return;
@@ -305,6 +306,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
     });
 
     if (result != null) {
+      AppHaptics.light();
       widget.onSendVoice(File(result.path), durationMs);
       widget.onClearReply();
     }

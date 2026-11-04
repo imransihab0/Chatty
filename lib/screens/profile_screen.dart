@@ -1,19 +1,24 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:chatty/api/apis.dart';
 import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/app_theme.dart';
 import 'package:chatty/helper/dialogs.dart';
 import 'package:chatty/helper/my_date_util.dart';
 import 'package:chatty/models/chat_user.dart';
+import 'package:chatty/models/message.dart';
 import 'package:chatty/screens/auth/login_screen.dart';
 import 'package:chatty/screens/chat_screen.dart';
 import 'package:chatty/screens/media_viewer_screen.dart';
 import 'package:chatty/services/conversation_controller.dart';
 import 'package:chatty/services/theme_controller.dart';
+import 'package:chatty/services/wallpaper_controller.dart';
+import 'package:chatty/widgets/audio_waveform_player.dart';
 import 'package:chatty/widgets/circular_theme_cover.dart';
 import 'package:chatty/widgets/new_chat_sheet.dart';
+import 'package:chatty/widgets/wallpaper_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -35,6 +40,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _image;
   bool _isUpdating = false;
+  int _selectedSharedTab = 0;
+
+  static final RegExp _urlRegex = RegExp(
+    r'(https?:\/\/[^\s]+)',
+    caseSensitive: false,
+  );
 
   bool get _isMe => widget.user.id == APIs.myUid;
 
@@ -1166,6 +1177,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
+                _buildDivider(context),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                  leading: _buildIconBadge(
+                    context: context,
+                    icon: Icons.wallpaper_rounded,
+                  ),
+                  title: Text(
+                    'Chat Wallpaper',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimaryColor,
+                    ),
+                  ),
+                  subtitle: ValueListenableBuilder<ChatWallpaper>(
+                    valueListenable: WallpaperController.wallpaperNotifier,
+                    builder: (context, w, _) => Text(
+                      w.title,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: context.textMutedColor,
+                      ),
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ValueListenableBuilder<ChatWallpaper>(
+                        valueListenable: WallpaperController.wallpaperNotifier,
+                        builder: (context, w, _) {
+                          return Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: w.buildGradient(context.isDark),
+                              border: Border.all(
+                                color: context.borderColor,
+                                width: 1,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: context.chevronColor,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                  onTap: () => WallpaperPickerSheet.show(context),
+                ),
               ],
             ),
 
@@ -1466,42 +1535,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // Action Buttons: Send Message CTA
+              // Action Buttons: Send Message CTA + Wallpaper Picker
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          context.isDark ? Colors.white : Colors.black,
-                      foregroundColor:
-                          context.isDark ? Colors.black : Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                    label: const Text(
-                      'Send Message',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    onPressed: () {
-                      AppHaptics.light();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(user: user),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 46,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                context.isDark ? Colors.white : Colors.black,
+                            foregroundColor:
+                                context.isDark ? Colors.black : Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded,
+                              size: 18),
+                          label: const Text(
+                            'Send Message',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          onPressed: () {
+                            AppHaptics.light();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChatScreen(user: user),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: context.textPrimaryColor,
+                          side: BorderSide(
+                              color: context.borderColor, width: 0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.wallpaper_rounded, size: 18),
+                        label: const Text(
+                          'Wallpaper',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        onPressed: () => WallpaperPickerSheet.show(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -1615,6 +1714,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
 
+              // Shared Content Hub (Media, Voice Notes, Links)
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: APIs.getAllMessages(widget.user),
+                builder: (context, msgSnapshot) {
+                  final allDocs = msgSnapshot.data?.docs ?? [];
+                  final allMessages = allDocs
+                      .map((e) => Message.fromJson(e.data()))
+                      .toList();
+                  return _buildSharedContentSection(allMessages);
+                },
+              ),
+
               const SizedBox(height: 48),
             ],
           ),
@@ -1622,4 +1733,478 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
+
+  Widget _buildSharedContentSection(List<Message> allMessages) {
+    final mediaMessages =
+        allMessages.where((m) => m.type == Type.image).toList();
+    final audioMessages =
+        allMessages.where((m) => m.type == Type.audio).toList();
+
+    final List<_SharedLink> linkMessages = [];
+    for (final m in allMessages) {
+      if (m.type == Type.text) {
+        final matches = _urlRegex.allMatches(m.msg);
+        for (final match in matches) {
+          final url = match.group(0)!;
+          final uri = Uri.tryParse(url);
+          final host = uri?.host.isNotEmpty == true
+              ? uri!.host.toLowerCase().replaceAll('www.', '')
+              : url;
+          linkMessages.add(_SharedLink(
+            url: url,
+            host: host,
+            sent: m.sent,
+            isMe: m.fromId == APIs.myUid,
+          ));
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 20, bottom: 8, top: 22),
+          child: Text(
+            'SHARED CONTENT',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: context.textMutedColor,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.borderColor, width: 0.8),
+              boxShadow: context.softShadow,
+            ),
+            child: Material(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Segmented Tabs Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: context.badgeBackgroundColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildSharedTabPill(
+                            label: 'Media',
+                            count: mediaMessages.length,
+                            icon: Icons.photo_library_outlined,
+                            index: 0,
+                          ),
+                          _buildSharedTabPill(
+                            label: 'Voice',
+                            count: audioMessages.length,
+                            icon: Icons.mic_none_rounded,
+                            index: 1,
+                          ),
+                          _buildSharedTabPill(
+                            label: 'Links',
+                            count: linkMessages.length,
+                            icon: Icons.link_rounded,
+                            index: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildDivider(context),
+
+                  // Tab View Content
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _buildSelectedTabContent(
+                      mediaMessages: mediaMessages,
+                      audioMessages: audioMessages,
+                      linkMessages: linkMessages,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSharedTabPill({
+    required String label,
+    required int count,
+    required IconData icon,
+    required int index,
+  }) {
+    final isSelected = _selectedSharedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          AppHaptics.selection();
+          setState(() => _selectedSharedTab = index);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (context.isDark ? const Color(0xFF3F3F46) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 13,
+                color: isSelected
+                    ? context.textPrimaryColor
+                    : context.textMutedColor,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                count > 0 ? '$label ($count)' : label,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? context.textPrimaryColor
+                      : context.textMutedColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedTabContent({
+    required List<Message> mediaMessages,
+    required List<Message> audioMessages,
+    required List<_SharedLink> linkMessages,
+  }) {
+    if (_selectedSharedTab == 0) {
+      if (mediaMessages.isEmpty) {
+        return _buildEmptyState(
+          key: const ValueKey('empty_media'),
+          icon: Icons.photo_library_outlined,
+          title: 'No Shared Photos',
+          subtitle: 'Photos exchanged with this contact will appear here.',
+        );
+      }
+      return Padding(
+        key: const ValueKey('tab_media'),
+        padding: const EdgeInsets.all(12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: mediaMessages.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 3,
+              mainAxisSpacing: 3,
+              childAspectRatio: 1,
+            ),
+            itemBuilder: (context, i) {
+              final msg = mediaMessages[i];
+              final isMe = msg.fromId == APIs.myUid;
+              final timeStr = MyDateUtil.getFormattedTime(
+                  context: context, time: msg.sent);
+              return GestureDetector(
+                onTap: () {
+                  AppHaptics.light();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MediaViewerScreen(
+                        imageUrl: msg.msg,
+                        title: isMe ? 'You' : widget.user.name,
+                        timestamp: timeStr,
+                        heroTag: 'profile_shared_img_${msg.sent}',
+                      ),
+                    ),
+                  );
+                },
+                child: Hero(
+                  tag: 'profile_shared_img_${msg.sent}',
+                  child: CachedNetworkImage(
+                    imageUrl: msg.msg,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      color: context.surfaceMutedColor,
+                      child: Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              context.textPrimaryColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      color: context.surfaceMutedColor,
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 20,
+                        color: context.textMutedColor,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    } else if (_selectedSharedTab == 1) {
+      if (audioMessages.isEmpty) {
+        return _buildEmptyState(
+          key: const ValueKey('empty_voice'),
+          icon: Icons.mic_none_rounded,
+          title: 'No Voice Notes',
+          subtitle: 'Voice recordings exchanged will appear here.',
+        );
+      }
+      return ListView.separated(
+        key: const ValueKey('tab_voice'),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: audioMessages.length,
+        separatorBuilder: (_, __) => _buildDivider(context),
+        itemBuilder: (context, i) {
+          final msg = audioMessages[i];
+          final isMe = msg.fromId == APIs.myUid;
+          final timeStr =
+              MyDateUtil.getFormattedTime(context: context, time: msg.sent);
+          final dateStr = MyDateUtil.getChatDateHeader(msg.sent);
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isMe
+                            ? (context.isDark
+                                ? Colors.white24
+                                : Colors.black12)
+                            : context.primarySoftColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isMe ? 'You' : widget.user.name,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimaryColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$dateStr · $timeStr',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: context.textMutedColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                AudioWaveformPlayer(
+                  isMe: isMe,
+                  audioUrl: msg.msg,
+                  durationMs: msg.durationMs,
+                  sentTime: timeStr,
+                  isRead: msg.read.isNotEmpty,
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } else {
+      if (linkMessages.isEmpty) {
+        return _buildEmptyState(
+          key: const ValueKey('empty_links'),
+          icon: Icons.link_rounded,
+          title: 'No Links Shared',
+          subtitle: 'Web links and URLs exchanged will appear here.',
+        );
+      }
+      return ListView.separated(
+        key: const ValueKey('tab_links'),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: linkMessages.length,
+        separatorBuilder: (_, __) => _buildDivider(context),
+        itemBuilder: (context, i) {
+          final item = linkMessages[i];
+          IconData icon = Icons.language_rounded;
+          if (item.host.contains('youtube') ||
+              item.host.contains('youtu.be')) {
+            icon = Icons.play_circle_filled_rounded;
+          } else if (item.host.contains('github')) {
+            icon = Icons.code_rounded;
+          } else if (item.host.contains('twitter') ||
+              item.host.contains('x.com')) {
+            icon = Icons.tag_rounded;
+          }
+
+          final timeStr =
+              MyDateUtil.getFormattedTime(context: context, time: item.sent);
+
+          return ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            leading: _buildIconBadge(
+              context: context,
+              icon: icon,
+            ),
+            title: Text(
+              item.host,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimaryColor,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 2),
+                Text(
+                  item.url,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: context.textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${item.isMe ? 'You' : widget.user.name} · $timeStr',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 10.5,
+                    color: context.textMutedColor,
+                  ),
+                ),
+              ],
+            ),
+            trailing: IconButton(
+              icon: Icon(Icons.copy_rounded,
+                  size: 17, color: context.textMutedColor),
+              onPressed: () => _copyToClipboard(item.url, 'Link'),
+            ),
+            onTap: () => _copyToClipboard(item.url, 'Link'),
+          );
+        },
+      );
+    }
+  }
+
+  Widget _buildEmptyState({
+    Key? key,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      key: key,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: context.badgeBackgroundColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 22, color: context.textMutedColor),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: context.textPrimaryColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              color: context.textMutedColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SharedLink {
+  final String url;
+  final String host;
+  final String sent;
+  final bool isMe;
+
+  const _SharedLink({
+    required this.url,
+    required this.host,
+    required this.sent,
+    required this.isMe,
+  });
 }

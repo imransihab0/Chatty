@@ -790,8 +790,12 @@ class _MessageCardState extends State<MessageCard>
       padding: EdgeInsets.only(
         left: isMe ? 14 : 20,
         right: 14,
-        top: widget.isNextSame ? 1.5 : 4.0,
-        bottom: widget.isNextSame ? 1.5 : 4.0,
+        top: widget.isPrevSame
+            ? (widget.message.type == Type.image ? 1.0 : 1.5)
+            : 4.0,
+        bottom: widget.isNextSame
+            ? (widget.message.type == Type.image ? 1.0 : 1.5)
+            : 4.0,
       ),
       child: Dismissible(
         key: Key('msg_${widget.message.sent}'),
@@ -1116,15 +1120,22 @@ class _MessageCardState extends State<MessageCard>
           ),
         );
       },
-      child: Hero(
-        tag: 'msg_img_${widget.message.sent}',
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            children: [
-              CachedNetworkImage(
-                imageUrl: widget.message.msg,
-                fit: BoxFit.cover,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+          maxHeight: 260,
+        ),
+        child: Hero(
+          tag: 'msg_img_${widget.message.sent}',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              children: [
+                CachedNetworkImage(
+                  imageUrl: widget.message.msg,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 220,
                 placeholder: (context, url) => Container(
                   height: 200,
                   width: double.infinity,
@@ -1191,8 +1202,9 @@ class _MessageCardState extends State<MessageCard>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Sent by other person (Left aligned)
   Widget _otherMessage() {

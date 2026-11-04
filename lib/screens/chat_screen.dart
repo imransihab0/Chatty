@@ -12,12 +12,15 @@ import '../helper/dialogs.dart';
 import '../helper/my_date_util.dart';
 import '../models/chat_user.dart';
 import '../models/message.dart';
+import '../services/wallpaper_controller.dart';
 import '../widgets/app_components.dart';
 import '../widgets/chat_voice_input_bar.dart';
 import '../widgets/message_card.dart';
 import '../widgets/shimmer_skeleton.dart';
 import '../widgets/typing_wave_dots.dart';
+import '../widgets/wallpaper_picker_sheet.dart';
 import 'media_viewer_screen.dart';
+import 'profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatUser user;
@@ -557,7 +560,74 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
+
+              // View Shared Media & Full Profile Button
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        context.isDark ? Colors.white : Colors.black,
+                    foregroundColor:
+                        context.isDark ? Colors.black : Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.perm_media_outlined, size: 18),
+                  label: const Text(
+                    'Shared Media & Profile',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14.5,
+                    ),
+                  ),
+                  onPressed: () {
+                    AppHaptics.light();
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfileScreen(user: currentUser),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Customize Wallpaper Shortcut
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: context.textPrimaryColor,
+                    side: BorderSide(color: context.borderColor, width: 0.8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.wallpaper_rounded, size: 18),
+                  label: const Text(
+                    'Chat Wallpaper',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    WallpaperPickerSheet.show(context);
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -593,24 +663,14 @@ class _ChatScreenState extends State<ChatScreen> {
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusScope.of(context).unfocus(),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: context.isDark
-                    ? const [
-                        Color(0xFF000000),
-                        Color(0xFF0D0D10),
-                        Color(0xFF070709),
-                      ]
-                    : const [
-                        Color(0xFFF9F9FB),
-                        Color(0xFFF1F1F5),
-                        Color(0xFFECECF1),
-                      ],
-              ),
-            ),
+          child: ValueListenableBuilder<ChatWallpaper>(
+            valueListenable: WallpaperController.wallpaperNotifier,
+            builder: (context, currentWallpaper, child) {
+              return Container(
+                decoration: currentWallpaper.buildDecoration(context.isDark),
+                child: child,
+              );
+            },
             child: Column(
               children: [
                 _buildSearchStepperBar(),
@@ -1036,20 +1096,47 @@ class _ChatScreenState extends State<ChatScreen> {
               color: context.surfaceColor,
               elevation: 4,
               onSelected: (val) {
-                if (val == 'info') {
-                  _showUserProfileDialog(currentUser);
+                if (val == 'profile') {
+                  AppHaptics.light();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(user: currentUser),
+                    ),
+                  );
+                } else if (val == 'wallpaper') {
+                  WallpaperPickerSheet.show(context);
                 }
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: 'info',
+                  value: 'profile',
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 20, color: context.textPrimaryColor),
+                      Icon(Icons.perm_media_outlined,
+                          size: 19, color: context.textPrimaryColor),
                       const SizedBox(width: 12),
                       Text(
-                        'Contact Info',
+                        'Shared Media & Profile',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: context.textPrimaryColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'wallpaper',
+                  child: Row(
+                    children: [
+                      Icon(Icons.wallpaper_rounded,
+                          size: 19, color: context.textPrimaryColor),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Chat Wallpaper',
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           color: context.textPrimaryColor,
