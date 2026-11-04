@@ -62,12 +62,21 @@ class _SplashScreenState extends State<SplashScreen> {
                       width: logoSize,
                       height: logoSize,
                       decoration: BoxDecoration(
-                        color: context.surfaceColor,
-                        borderRadius: BorderRadius.circular(36),
-                        boxShadow: context.softShadow,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: context.isDark ? 0.45 : 0.16),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      padding: const EdgeInsets.all(20),
-                      child: Image.asset('images/icon.png', fit: BoxFit.contain),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child:
+                            Image.asset('images/icon.png', fit: BoxFit.cover),
+                      ),
                     ),
                     const SizedBox(height: 24),
                   Text(
