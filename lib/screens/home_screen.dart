@@ -698,17 +698,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final bool hasLocal = localFiltered.isNotEmpty;
     final bool hasGlobal = _globalSearchResults.isNotEmpty;
 
-    return ListView(
-      addAutomaticKeepAlives: true,
-      addRepaintBoundaries: true,
-      padding: EdgeInsets.only(
-        top: 4,
-        bottom: 24 + MediaQuery.paddingOf(context).bottom,
-      ),
-      physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics()),
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      children: [
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollStartNotification) {
+          ChatUserCard.closeActiveDrawer();
+        }
+        return false;
+      },
+      child: ListView(
+        addAutomaticKeepAlives: true,
+        addRepaintBoundaries: true,
+        padding: EdgeInsets.only(
+          top: 4,
+          bottom: 24 + MediaQuery.paddingOf(context).bottom,
+        ),
+        physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics()),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        children: [
         // Quick Search Trigger Pill & Active Friends (Scroll with list, hidden during active search)
         if (!_isSearching) ...[
           _searchTriggerPill(),
@@ -806,7 +813,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ],
       ],
-    );
+    ),
+  );
   }
 
   // Dedicated High-End Empty States

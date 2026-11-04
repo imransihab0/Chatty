@@ -29,6 +29,11 @@ class ChatUserCard extends StatefulWidget {
 
   const ChatUserCard({super.key, required this.user});
 
+  /// Closes any currently opened action drawer in the list
+  static void closeActiveDrawer() {
+    _ChatUserCardState.closeActiveDrawer();
+  }
+
   @override
   State<ChatUserCard> createState() => _ChatUserCardState();
 }
@@ -42,6 +47,14 @@ class _ChatUserCardState extends State<ChatUserCard>
   late Stream<QuerySnapshot<Map<String, dynamic>>> _userInfoStream;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _lastMessageStream;
   late Stream<DocumentSnapshot<Map<String, dynamic>>> _chatMetaStream;
+
+  // Global coordinator: ensures only ONE slidable drawer is open across the entire conversation list
+  static _ChatUserCardState? _activeOpenCard;
+
+  static void closeActiveDrawer() {
+    _activeOpenCard?._closeDrawer();
+    _activeOpenCard = null;
+  }
 
   // Interactive Telegram / iOS Multi-Action Slidable Drawer
   late final AnimationController _dragController;
@@ -67,6 +80,9 @@ class _ChatUserCardState extends State<ChatUserCard>
 
   @override
   void dispose() {
+    if (_activeOpenCard == this) {
+      _activeOpenCard = null;
+    }
     _dragController.dispose();
     super.dispose();
   }
@@ -79,12 +95,25 @@ class _ChatUserCardState extends State<ChatUserCard>
   }
 
   void _closeDrawer() {
+    if (_activeOpenCard == this) {
+      _activeOpenCard = null;
+    }
     if (_dragExtent != 0.0) {
       _animateTo(0.0);
     }
   }
 
+  void _onHorizontalDragStart(DragStartDetails details) {
+    if (_activeOpenCard != null && _activeOpenCard != this) {
+      _activeOpenCard?._closeDrawer();
+    }
+  }
+
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    if (_activeOpenCard != null && _activeOpenCard != this) {
+      _activeOpenCard?._closeDrawer();
+    }
+
     final double delta = details.primaryDelta ?? 0.0;
     double newExtent = _dragExtent + delta;
 
@@ -113,11 +142,16 @@ class _ChatUserCardState extends State<ChatUserCard>
     if (velocity > 400 || _dragExtent > 74.0) {
       AppHaptics.light();
       _animateTo(_actionThreshold);
+      _activeOpenCard = this;
     } else if (velocity < -400 || _dragExtent < -74.0) {
       AppHaptics.light();
       _animateTo(-_actionThreshold);
+      _activeOpenCard = this;
     } else {
       _animateTo(0.0);
+      if (_activeOpenCard == this) {
+        _activeOpenCard = null;
+      }
     }
   }
 
@@ -484,6 +518,7 @@ class _ChatUserCardState extends State<ChatUserCard>
           Transform.translate(
             offset: Offset(_dragExtent, 0.0),
             child: GestureDetector(
+              onHorizontalDragStart: _onHorizontalDragStart,
               onHorizontalDragUpdate: _onHorizontalDragUpdate,
               onHorizontalDragEnd: _onHorizontalDragEnd,
               behavior: HitTestBehavior.opaque,
@@ -511,12 +546,20 @@ class _ChatUserCardState extends State<ChatUserCard>
                             _closeDrawer();
                             return;
                           }
+                          if (_activeOpenCard != null && _activeOpenCard != this) {
+                            _activeOpenCard?._closeDrawer();
+                            return;
+                          }
                           AppHaptics.medium();
                           _showChatOptions(isPinned, widget.user);
                         },
                         onTap: () {
                           if (_dragExtent != 0.0) {
                             _closeDrawer();
+                            return;
+                          }
+                          if (_activeOpenCard != null && _activeOpenCard != this) {
+                            _activeOpenCard?._closeDrawer();
                             return;
                           }
                           AppHaptics.light();
