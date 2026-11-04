@@ -510,16 +510,18 @@ class _MessageCardState extends State<MessageCard>
 
         const double horizontalPadding = 16.0;
 
-        return Stack(
-          children: [
-            // Full Screen Frosted Blur Backdrop with Tap-to-Dismiss
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  AppHaptics.light();
-                  Navigator.pop(dialogContext);
-                },
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            AppHaptics.light();
+            if (dialogContext.mounted) {
+              Navigator.pop(dialogContext);
+            }
+          },
+          child: Stack(
+            children: [
+              // Full Screen Frosted Blur Backdrop
+              Positioned.fill(
                 child: AnimatedBuilder(
                   animation: animation,
                   builder: (context, _) {
@@ -537,7 +539,6 @@ class _MessageCardState extends State<MessageCard>
                   },
                 ),
               ),
-            ),
 
             // Magnetic Floating Cluster
             Positioned(
@@ -780,7 +781,8 @@ class _MessageCardState extends State<MessageCard>
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         );
       },
     );
