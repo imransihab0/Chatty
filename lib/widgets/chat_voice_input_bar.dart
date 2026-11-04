@@ -52,6 +52,8 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
   bool _cancelThresholdCrossed = false;
   double _dragOffsetX = 0.0;
   double _dragOffsetY = 0.0;
+  double _actionButtonScale = 1.0;
+  double _attachButtonScale = 1.0;
 
   int _recordSeconds = 0;
   Timer? _recordTimer;
@@ -483,35 +485,10 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
     required String label,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return _AttachmentTile(
+      icon: icon,
+      label: label,
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: context.isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-              border: Border.all(color: context.borderColor, width: 0.8),
-            ),
-            child: Icon(icon, color: context.textPrimaryColor, size: 24),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: context.textSecondaryColor,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -710,28 +687,36 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
   Widget _buildAttachmentButton() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _attachButtonScale = 0.90),
+      onTapUp: (_) => setState(() => _attachButtonScale = 1.0),
+      onTapCancel: () => setState(() => _attachButtonScale = 1.0),
       onTap: () {
         AppHaptics.light();
         _showTelegramAttachmentSheet(context);
       },
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: context.surfaceMutedColor,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: context.borderColor,
-            width: 0.8,
+      child: AnimatedScale(
+        scale: _attachButtonScale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: context.surfaceMutedColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: context.borderColor,
+              width: 0.8,
+            ),
           ),
-        ),
-        child: Center(
-          child: Transform.rotate(
-            angle: -math.pi / 4,
-            child: Icon(
-              Icons.attach_file_rounded,
-              color: context.textSecondaryColor,
-              size: 20,
+          child: Center(
+            child: Transform.rotate(
+              angle: -math.pi / 4,
+              child: Icon(
+                Icons.attach_file_rounded,
+                color: context.textSecondaryColor,
+                size: 20,
+              ),
             ),
           ),
         ),
@@ -813,24 +798,27 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
           ),
           const SizedBox(width: 12),
 
-          // High-performance Live Waveform Canvas
+          // High-performance Live Waveform Canvas (fades cleanly during slide-to-cancel)
           Expanded(
-            child: RepaintBoundary(
-              child: SizedBox(
-                height: 22,
-                child: ValueListenableBuilder<List<double>>(
-                  valueListenable: _amplitudesNotifier,
-                  builder: (context, amps, _) {
-                    return CustomPaint(
-                      painter: _LiveWaveformPainter(
-                        amplitudes: amps,
-                        activeColor:
-                            context.textPrimaryColor.withValues(alpha: 0.65),
-                        idleColor:
-                            context.textMutedColor.withValues(alpha: 0.22),
-                      ),
-                    );
-                  },
+            child: Opacity(
+              opacity: (1.0 - (-_dragOffsetX / 40.0)).clamp(0.0, 1.0),
+              child: RepaintBoundary(
+                child: SizedBox(
+                  height: 22,
+                  child: ValueListenableBuilder<List<double>>(
+                    valueListenable: _amplitudesNotifier,
+                    builder: (context, amps, _) {
+                      return CustomPaint(
+                        painter: _LiveWaveformPainter(
+                          amplitudes: amps,
+                          activeColor:
+                              context.textPrimaryColor.withValues(alpha: 0.65),
+                          idleColor:
+                              context.textMutedColor.withValues(alpha: 0.22),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -846,7 +834,7 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
 
   Widget _buildSlideToCancel() {
     return Transform.translate(
-      offset: Offset(_dragOffsetX * 0.25, 0),
+      offset: Offset((_dragOffsetX * 0.20).clamp(-40.0, 0.0), 0),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 150),
         child: _cancelThresholdCrossed
@@ -1324,6 +1312,9 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
 
     // 3. Normal mode: Tap to Send or Hold to Record
     return GestureDetector(
+      onTapDown: hasText ? (_) => setState(() => _actionButtonScale = 0.90) : null,
+      onTapUp: hasText ? (_) => setState(() => _actionButtonScale = 1.0) : null,
+      onTapCancel: hasText ? () => setState(() => _actionButtonScale = 1.0) : null,
       onTap: () {
         if (hasText) {
           _sendTextMessage();
@@ -1379,45 +1370,50 @@ class _ChatVoiceInputBarState extends State<ChatVoiceInputBar>
                 _stopAndSendRecording();
               }
             },
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: context.isDark ? Colors.white : Colors.black,
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            transitionBuilder: (child, anim) => ScaleTransition(
-              scale: anim,
-              child: RotationTransition(
-                turns: anim.drive(
-                  Tween<double>(begin: 0.12, end: 0.0),
-                ),
-                child: child,
-              ),
-            ),
-            child: _isSendingVoice
-                ? SizedBox(
-                    key: const ValueKey('sending'),
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        context.isDark ? Colors.black : Colors.white,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    hasText
-                        ? Icons.arrow_upward_rounded
-                        : Icons.mic_rounded,
-                    key: ValueKey(hasText ? 'send' : 'mic'),
-                    color: context.isDark ? Colors.black : Colors.white,
-                    size: hasText ? 22 : 23,
+      child: AnimatedScale(
+        scale: _actionButtonScale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: context.isDark ? Colors.white : Colors.black,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, anim) => ScaleTransition(
+                scale: anim,
+                child: RotationTransition(
+                  turns: anim.drive(
+                    Tween<double>(begin: 0.12, end: 0.0),
                   ),
+                  child: child,
+                ),
+              ),
+              child: _isSendingVoice
+                  ? SizedBox(
+                      key: const ValueKey('sending'),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          context.isDark ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      hasText
+                          ? Icons.arrow_upward_rounded
+                          : Icons.mic_rounded,
+                      key: ValueKey(hasText ? 'send' : 'mic'),
+                      color: context.isDark ? Colors.black : Colors.white,
+                      size: hasText ? 22 : 23,
+                    ),
+            ),
           ),
         ),
       ),
@@ -1480,4 +1476,71 @@ class _LiveWaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiveWaveformPainter oldDelegate) => true;
+}
+
+/// Tactile spring-animated tile in the attachment modal sheet
+class _AttachmentTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _AttachmentTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  State<_AttachmentTile> createState() => _AttachmentTileState();
+}
+
+class _AttachmentTileState extends State<_AttachmentTile> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _scale = 0.91),
+      onTapUp: (_) => setState(() => _scale = 1.0),
+      onTapCancel: () => setState(() => _scale = 1.0),
+      onTap: () {
+        AppHaptics.light();
+        widget.onTap();
+      },
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: context.isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+                border: Border.all(color: context.borderColor, width: 0.8),
+              ),
+              child:
+                  Icon(widget.icon, color: context.textPrimaryColor, size: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.label,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.textSecondaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

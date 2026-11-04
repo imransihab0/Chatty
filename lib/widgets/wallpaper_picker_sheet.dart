@@ -101,7 +101,10 @@ class WallpaperPickerSheet extends StatelessWidget {
                         wallpaper: wallpaper,
                         isSelected: isSelected,
                         isDark: isDark,
-                        onTap: () => WallpaperController.setWallpaper(wallpaper),
+                        onTap: () {
+                          AppHaptics.selection();
+                          WallpaperController.setWallpaper(wallpaper);
+                        },
                       );
                     }).toList(),
                   );

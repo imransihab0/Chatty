@@ -1886,16 +1886,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ? context.textPrimaryColor
                     : context.textMutedColor,
               ),
-              const SizedBox(width: 5),
-              Text(
-                count > 0 ? '$label ($count)' : label,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected
-                      ? context.textPrimaryColor
-                      : context.textMutedColor,
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  count > 0 ? '$label ($count)' : label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? context.textPrimaryColor
+                        : context.textMutedColor,
+                  ),
                 ),
               ),
             ],

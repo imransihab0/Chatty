@@ -50,6 +50,8 @@ class _MessageCardState extends State<MessageCard>
 
   final GlobalKey _bubbleKey = GlobalKey();
   double _pressScale = 1.0;
+  final ValueNotifier<double> _swipeProgress = ValueNotifier<double>(0.0);
+  bool _swipeThresholdTriggered = false;
 
   late final AnimationController _heartAnimController;
   late final Animation<double> _heartScale;
@@ -100,6 +102,7 @@ class _MessageCardState extends State<MessageCard>
   @override
   void dispose() {
     _heartAnimController.dispose();
+    _swipeProgress.dispose();
     super.dispose();
   }
 
@@ -800,29 +803,70 @@ class _MessageCardState extends State<MessageCard>
       child: Dismissible(
         key: Key('msg_${widget.message.sent}'),
         direction: DismissDirection.startToEnd,
+        dismissThresholds: const {DismissDirection.startToEnd: 0.18},
+        onUpdate: (details) {
+          _swipeProgress.value = details.progress;
+          if (details.reached && !_swipeThresholdTriggered) {
+            _swipeThresholdTriggered = true;
+            AppHaptics.medium();
+          } else if (!details.reached && _swipeThresholdTriggered) {
+            _swipeThresholdTriggered = false;
+          }
+        },
         confirmDismiss: (direction) async {
-          AppHaptics.light();
+          _swipeThresholdTriggered = false;
+          _swipeProgress.value = 0.0;
           if (widget.onSwipeReply != null) {
             widget.onSwipeReply!(widget.message);
           }
           return false;
         },
-        background: Container(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.only(left: 10),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: (context.isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.reply_rounded,
-              color: context.isDark ? Colors.white : Colors.black,
-              size: 20,
-            ),
-          ),
+        background: ValueListenableBuilder<double>(
+          valueListenable: _swipeProgress,
+          builder: (context, progress, child) {
+            final activeThreshold = (progress / 0.18).clamp(0.0, 1.0);
+            final scale = (progress * 5.0).clamp(0.0, 1.15);
+            final isTriggered = progress >= 0.18;
+            final isDark = context.isDark;
+
+            return Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 8),
+              child: Transform.scale(
+                scale: scale,
+                child: Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: isTriggered
+                        ? (isDark ? Colors.white : Colors.black)
+                        : (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.12 + 0.18 * activeThreshold),
+                    shape: BoxShape.circle,
+                    boxShadow: isTriggered
+                        ? [
+                            BoxShadow(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.25),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Transform.rotate(
+                    angle: (1.0 - activeThreshold) * -0.4,
+                    child: Icon(
+                      Icons.reply_rounded,
+                      color: isTriggered
+                          ? (isDark ? Colors.black : Colors.white)
+                          : (isDark ? Colors.white : Colors.black),
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         child: GestureDetector(
           onTapDown: (_) => setState(() => _pressScale = 0.97),
@@ -1072,32 +1116,34 @@ class _MessageCardState extends State<MessageCard>
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildHighlightedText(
-          text: text,
-          baseStyle: textStyle,
-          highlightColor: isMe
-              ? Colors.white.withValues(alpha: 0.25)
-              : (context.isDark
-                  ? const Color(0xFF333333)
-                  : const Color(0xFFE4E4E7)),
-          highlightTextColor: isMe ? Colors.white : context.textPrimaryColor,
-        ),
-        if (hasLink) _buildLinkPreviewIfNeeded(text, isMe),
-        const SizedBox(height: 2),
-        Align(
-          alignment: Alignment.bottomRight,
-          child: _buildTimestampRow(
-            isMe: isMe,
-            sentTime: sentTime,
-            isRead: isRead,
-            timeStyle: timeStyle,
+    return IntrinsicWidth(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildHighlightedText(
+            text: text,
+            baseStyle: textStyle,
+            highlightColor: isMe
+                ? Colors.white.withValues(alpha: 0.25)
+                : (context.isDark
+                    ? const Color(0xFF333333)
+                    : const Color(0xFFE4E4E7)),
+            highlightTextColor: isMe ? Colors.white : context.textPrimaryColor,
           ),
-        ),
-      ],
+          if (hasLink) _buildLinkPreviewIfNeeded(text, isMe),
+          const SizedBox(height: 2),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: _buildTimestampRow(
+              isMe: isMe,
+              sentTime: sentTime,
+              isRead: isRead,
+              timeStyle: timeStyle,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1236,10 +1282,16 @@ class _MessageCardState extends State<MessageCard>
 
     final incomingShadow = [
       BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
+        color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.06),
+        blurRadius: 10,
+        offset: const Offset(0, 3),
       ),
+      if (isDark)
+        BoxShadow(
+          color: Colors.white.withValues(alpha: 0.04),
+          blurRadius: 1,
+          offset: const Offset(0, -0.5),
+        ),
     ];
 
     return Align(
@@ -1357,9 +1409,14 @@ class _MessageCardState extends State<MessageCard>
 
     final outgoingShadow = [
       BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.16),
-        blurRadius: 8,
-        offset: const Offset(0, 2.5),
+        color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.18),
+        blurRadius: 10,
+        offset: const Offset(0, 3),
+      ),
+      BoxShadow(
+        color: Colors.white.withValues(alpha: isDark ? 0.06 : 0.05),
+        blurRadius: 1,
+        offset: const Offset(0, -0.5),
       ),
     ];
 

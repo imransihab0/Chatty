@@ -48,6 +48,7 @@ class _ChatUserCardState extends State<ChatUserCard>
   Animation<double>? _dragAnimation;
   double _dragExtent = 0.0;
   static const double _actionThreshold = 148.0;
+  double _tileScale = 1.0;
 
   @override
   void initState() {
@@ -489,34 +490,44 @@ class _ChatUserCardState extends State<ChatUserCard>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Material(
-                    color: isPinned
-                        ? (context.isDark
-                            ? const Color(0xFF1E1E22)
-                            : const Color(0xFFF4F4F7))
-                        : context.surfaceColor,
-                    child: InkWell(
-                      onLongPress: () {
-                        if (_dragExtent != 0.0) {
-                          _closeDrawer();
-                          return;
-                        }
-                        AppHaptics.medium();
-                        _showChatOptions(isPinned, widget.user);
-                      },
-                      onTap: () {
-                        if (_dragExtent != 0.0) {
-                          _closeDrawer();
-                          return;
-                        }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChatScreen(user: widget.user),
-                          ),
-                        );
-                      },
-                      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  AnimatedScale(
+                    scale: _tileScale,
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeOutCubic,
+                    child: Material(
+                      color: isPinned
+                          ? (context.isDark
+                              ? const Color(0xFF1E1E22)
+                              : const Color(0xFFF4F4F7))
+                          : context.surfaceColor,
+                      child: InkWell(
+                        onHighlightChanged: (highlighted) {
+                          if (_tileScale != (highlighted ? 0.985 : 1.0)) {
+                            setState(() => _tileScale = highlighted ? 0.985 : 1.0);
+                          }
+                        },
+                        onLongPress: () {
+                          if (_dragExtent != 0.0) {
+                            _closeDrawer();
+                            return;
+                          }
+                          AppHaptics.medium();
+                          _showChatOptions(isPinned, widget.user);
+                        },
+                        onTap: () {
+                          if (_dragExtent != 0.0) {
+                            _closeDrawer();
+                            return;
+                          }
+                          AppHaptics.light();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChatScreen(user: widget.user),
+                            ),
+                          );
+                        },
+                        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _userInfoStream,
                 builder: (context, userSnapshot) {
                   final userData = userSnapshot.data?.docs;
@@ -708,6 +719,7 @@ class _ChatUserCardState extends State<ChatUserCard>
               ),
             ),
           ),
+        ),
           // Subtle hairline divider indented 82pt after avatar
           Divider(
             height: 0.8,

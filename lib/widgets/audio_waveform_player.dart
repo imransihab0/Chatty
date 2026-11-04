@@ -28,6 +28,8 @@ class AudioWaveformPlayer extends StatefulWidget {
 
 class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
     with TickerProviderStateMixin {
+  static _AudioWaveformPlayerState? _activePlayingPlayer;
+
   late final AudioPlayer _player;
   late final List<double> _barHeights;
   late final AnimationController _playPauseController;
@@ -41,6 +43,24 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
   Duration _duration = Duration.zero;
   double? _scrubFraction;
   int? _lastScrubIndex;
+  bool _wasPlayingBeforeScrub = false;
+  double _playButtonScale = 1.0;
+  double _speedPillScale = 1.0;
+
+  void _pauseSelf() {
+    if (_player.playing) {
+      _player.pause();
+      _playPauseController.reverse();
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _claimPlayback() {
+    if (_activePlayingPlayer != null && _activePlayingPlayer != this) {
+      _activePlayingPlayer!._pauseSelf();
+    }
+    _activePlayingPlayer = this;
+  }
 
   @override
   void initState() {
@@ -127,6 +147,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
       }
       if (!mounted) return;
       setState(() => _isLoading = false);
+      _claimPlayback();
       _playPauseController.forward();
       unawaited(_player.play());
     } catch (e) {
@@ -154,6 +175,7 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
       if (_player.duration == null) {
         _loadAndPlay();
       } else {
+        _claimPlayback();
         _playPauseController.forward();
         unawaited(_player.play());
       }
@@ -190,6 +212,9 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
 
   @override
   void dispose() {
+    if (_activePlayingPlayer == this) {
+      _activePlayingPlayer = null;
+    }
     _player.dispose();
     _playPauseController.dispose();
     super.dispose();
@@ -223,12 +248,19 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Circular Play / Pause Button ──
+            // ── Circular Play / Pause Button with tactile press scale ──
             GestureDetector(
+              onTapDown: (_) => setState(() => _playButtonScale = 0.91),
+              onTapUp: (_) => setState(() => _playButtonScale = 1.0),
+              onTapCancel: () => setState(() => _playButtonScale = 1.0),
               onTap: _isLoading ? null : _togglePlay,
-              child: Container(
-                width: 38,
-                height: 38,
+              child: AnimatedScale(
+                scale: _playButtonScale,
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                child: Container(
+                  width: 38,
+                  height: 38,
                 decoration: BoxDecoration(
                   color: widget.isMe
                       ? Colors.white.withValues(alpha: 0.20)
@@ -276,7 +308,8 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+          ),
+          const SizedBox(width: 10),
 
             // ── Waveform + Bottom Metadata (Duration, Speed, SentTime, Checkmarks) ──
             Expanded(
@@ -300,6 +333,10 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                           _seekToFraction(fraction);
                         },
                         onHorizontalDragStart: (details) {
+                          _wasPlayingBeforeScrub = _player.playing;
+                          if (_wasPlayingBeforeScrub) {
+                            _player.pause();
+                          }
                           final fraction =
                               (details.localPosition.dx / width).clamp(0.0, 1.0);
                           _lastScrubIndex = (fraction * _barCount).floor();
@@ -319,14 +356,22 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                           _lastScrubIndex = null;
                           if (_scrubFraction != null) {
                             _seekToFraction(_scrubFraction!);
+                            if (_wasPlayingBeforeScrub) {
+                              _claimPlayback();
+                              unawaited(_player.play());
+                            }
                           }
                         },
                         onHorizontalDragCancel: () {
                           _lastScrubIndex = null;
                           setState(() => _scrubFraction = null);
+                          if (_wasPlayingBeforeScrub) {
+                            _claimPlayback();
+                            unawaited(_player.play());
+                          }
                         },
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           child: SizedBox(
                             height: 24,
                             child: Row(
@@ -372,50 +417,58 @@ class _AudioWaveformPlayerState extends State<AudioWaveformPlayer>
                       ),
                       const SizedBox(width: 6),
 
-                      // Speed toggle pill (1× / 1.5× / 2×)
+                      // Speed toggle pill (1× / 1.5× / 2×) with spring scale
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
+                        onTapDown: (_) => setState(() => _speedPillScale = 0.92),
+                        onTapUp: (_) => setState(() => _speedPillScale = 1.0),
+                        onTapCancel: () => setState(() => _speedPillScale = 1.0),
                         onTap: _cycleSpeed,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: _speeds[_speedIndex] > 1.0
-                                ? (widget.isMe
-                                    ? Colors.white.withValues(alpha: 0.35)
-                                    : (context.isDark
-                                        ? Colors.white
-                                        : Colors.black))
-                                : (widget.isMe
-                                    ? Colors.white.withValues(alpha: 0.16)
-                                    : context.surfaceMutedColor),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: widget.isMe
-                                  ? Colors.white.withValues(alpha: 0.25)
-                                  : context.borderColor,
-                              width: 0.6,
-                            ),
-                          ),
-                          child: Text(
-                            _speeds[_speedIndex] == 1.0
-                                ? '1×'
-                                : (_speeds[_speedIndex] == 2.0
-                                    ? '2×'
-                                    : '1.5×'),
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
+                        child: AnimatedScale(
+                          scale: _speedPillScale,
+                          duration: const Duration(milliseconds: 140),
+                          curve: Curves.easeOutCubic,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
                               color: _speeds[_speedIndex] > 1.0
                                   ? (widget.isMe
-                                      ? Colors.white
+                                      ? Colors.white.withValues(alpha: 0.35)
                                       : (context.isDark
-                                          ? Colors.black
-                                          : Colors.white))
+                                          ? Colors.white
+                                          : Colors.black))
                                   : (widget.isMe
-                                      ? Colors.white.withValues(alpha: 0.85)
-                                      : context.textSecondaryColor),
+                                      ? Colors.white.withValues(alpha: 0.16)
+                                      : context.surfaceMutedColor),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: widget.isMe
+                                    ? Colors.white.withValues(alpha: 0.25)
+                                    : context.borderColor,
+                                width: 0.6,
+                              ),
+                            ),
+                            child: Text(
+                              _speeds[_speedIndex] == 1.0
+                                  ? '1×'
+                                  : (_speeds[_speedIndex] == 2.0
+                                      ? '2×'
+                                      : '1.5×'),
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: _speeds[_speedIndex] > 1.0
+                                    ? (widget.isMe
+                                        ? Colors.white
+                                        : (context.isDark
+                                            ? Colors.black
+                                            : Colors.white))
+                                    : (widget.isMe
+                                        ? Colors.white.withValues(alpha: 0.85)
+                                        : context.textSecondaryColor),
+                              ),
                             ),
                           ),
                         ),

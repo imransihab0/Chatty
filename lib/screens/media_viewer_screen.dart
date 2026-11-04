@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chatty/helper/app_haptics.dart';
 import 'package:chatty/helper/dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,10 +24,12 @@ class MediaViewerScreen extends StatefulWidget {
 }
 
 class _MediaViewerScreenState extends State<MediaViewerScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TransformationController _transformController;
   late AnimationController _springController;
+  late AnimationController _zoomAnimationController;
   Animation<double>? _springAnimation;
+  Animation<Matrix4>? _zoomAnimation;
   TapDownDetails? _doubleTapDetails;
   bool _showControls = true;
   double _dragOffset = 0.0;
@@ -46,12 +49,22 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
           setState(() => _dragOffset = _springAnimation!.value);
         }
       });
+
+    _zoomAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    )..addListener(() {
+        if (_zoomAnimation != null) {
+          _transformController.value = _zoomAnimation!.value;
+        }
+      });
   }
 
   @override
   void dispose() {
     _transformController.dispose();
     _springController.dispose();
+    _zoomAnimationController.dispose();
     super.dispose();
   }
 
@@ -67,14 +80,25 @@ class _MediaViewerScreenState extends State<MediaViewerScreen>
   }
 
   void _handleDoubleTap() {
+    AppHaptics.light();
+    final Matrix4 endMatrix;
     if (!_isAtDefaultScale) {
-      _transformController.value = Matrix4.identity();
+      endMatrix = Matrix4.identity();
     } else {
       final position = _doubleTapDetails?.localPosition ?? Offset.zero;
-      _transformController.value = Matrix4.diagonal3Values(2.5, 2.5, 1.0)
+      endMatrix = Matrix4.diagonal3Values(2.5, 2.5, 1.0)
         ..setTranslationRaw(-position.dx * 1.5, -position.dy * 1.5, 0.0);
     }
-    setState(() {});
+
+    _zoomAnimation = Matrix4Tween(
+      begin: _transformController.value,
+      end: endMatrix,
+    ).animate(CurvedAnimation(
+      parent: _zoomAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _zoomAnimationController.forward(from: 0.0);
   }
 
   Widget _buildErrorWidget() {

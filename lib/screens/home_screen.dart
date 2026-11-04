@@ -547,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           SizedBox(
-            height: 96,
+            height: (88 + (16 * (MediaQuery.textScalerOf(context).scale(11) / 11))).clamp(96.0, 130.0),
             child: ListView.builder(
               key: const PageStorageKey('active_now_horizontal_tray'),
               scrollDirection: Axis.horizontal,
@@ -555,49 +555,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               itemCount: onlineList.length,
               itemBuilder: (context, index) {
-                final user = onlineList[index];
-                final firstName = user.name.split(' ').first;
-
-                return InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () {
-                    AppHaptics.light();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatScreen(user: user),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 68,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AppAvatar(
-                          imageUrl: user.image,
-                          name: user.name,
-                          size: 48,
-                          isOnline: user.isOnline,
-                        ),
-                        AppSpacing.gapH6,
-                        Text(
-                          firstName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: AppTypography.fontFamily,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                return _ActiveNowAvatarItem(user: onlineList[index]);
               },
             ),
           ),
@@ -674,63 +632,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        AppHaptics.selection();
-        onTap();
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          constraints: const BoxConstraints(minHeight: 36),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (context.isDark ? Colors.white : Colors.black)
-                : context.surfaceMutedColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected
-                  ? (context.isDark ? Colors.white : Colors.black)
-                  : context.borderColor,
-              width: 1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: (context.isDark ? Colors.white : Colors.black)
-                          .withValues(alpha: context.isDark ? 0.15 : 0.15),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: AppTypography.fontFamily,
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? (context.isDark ? Colors.black : Colors.white)
-                      : context.textSecondaryColor,
-                ),
-              ),
-              AppSpacing.gapW6,
-              AppBadge(
-                text: '$count',
-                isSelected: isSelected,
-              ),
-            ],
-          ),
-        ),
-      ),
+    return _TactileFilterChip(
+      title: title,
+      count: count,
+      isSelected: isSelected,
+      onTap: onTap,
     );
   }
 
@@ -1057,6 +963,165 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               : const Color(0xFFE4E4E8),
         ),
       ],
+    );
+  }
+}
+
+/// Spring-interactive Active Now Avatar item with press scaling and haptic feedback
+class _ActiveNowAvatarItem extends StatefulWidget {
+  final ChatUser user;
+  const _ActiveNowAvatarItem({required this.user});
+
+  @override
+  State<_ActiveNowAvatarItem> createState() => _ActiveNowAvatarItemState();
+}
+
+class _ActiveNowAvatarItemState extends State<_ActiveNowAvatarItem> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final firstName = widget.user.name.split(' ').first;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _scale = 0.92),
+      onTapUp: (_) => setState(() => _scale = 1.0),
+      onTapCancel: () => setState(() => _scale = 1.0),
+      onTap: () {
+        AppHaptics.light();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(user: widget.user),
+          ),
+        );
+      },
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          width: 68,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppAvatar(
+                imageUrl: widget.user.image,
+                name: widget.user.name,
+                size: 48,
+                isOnline: widget.user.isOnline,
+              ),
+              AppSpacing.gapH6,
+              Text(
+                firstName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTypography.fontFamily,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tactile Chat Filter Chip with spring press scale and theme transitions
+class _TactileFilterChip extends StatefulWidget {
+  final String title;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TactileFilterChip({
+    required this.title,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_TactileFilterChip> createState() => _TactileFilterChipState();
+}
+
+class _TactileFilterChipState extends State<_TactileFilterChip> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _scale = 0.94),
+      onTapUp: (_) => setState(() => _scale = 1.0),
+      onTapCancel: () => setState(() => _scale = 1.0),
+      onTap: () {
+        AppHaptics.selection();
+        widget.onTap();
+      },
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            constraints: const BoxConstraints(minHeight: 36),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.isSelected
+                  ? (context.isDark ? Colors.white : Colors.black)
+                  : context.surfaceMutedColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: widget.isSelected
+                    ? (context.isDark ? Colors.white : Colors.black)
+                    : context.borderColor,
+                width: 1,
+              ),
+              boxShadow: widget.isSelected
+                  ? [
+                      BoxShadow(
+                        color: (context.isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: context.isDark ? 0.15 : 0.15),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontFamily: AppTypography.fontFamily,
+                    fontSize: 13,
+                    fontWeight:
+                        widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: widget.isSelected
+                        ? (context.isDark ? Colors.black : Colors.white)
+                        : context.textSecondaryColor,
+                  ),
+                ),
+                AppSpacing.gapW6,
+                AppBadge(
+                  text: '${widget.count}',
+                  isSelected: widget.isSelected,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
