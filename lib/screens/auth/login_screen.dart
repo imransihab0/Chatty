@@ -141,25 +141,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
+                          SizedBox(
                             width: logoSize,
                             height: logoSize,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                      alpha: context.isDark ? 0.45 : 0.16),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(28),
-                              child: Image.asset('images/icon.png',
-                                  fit: BoxFit.cover),
-                            ),
+                            child: Image.asset('images/icon.png',
+                                fit: BoxFit.contain),
                           ),
                           const SizedBox(height: 28),
                           Text(
